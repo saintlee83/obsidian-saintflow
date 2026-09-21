@@ -2,9 +2,10 @@
 
 import { App, Modal, Notice, Setting, TFile } from "obsidian";
 import type { SaintFlowCore } from "../core";
-import { RULE_LABEL, Violation, groupByRule } from "../lint";
+import { Violation, groupByRule, ruleLabel } from "../lint";
 import { applyFix, lintFile, lintVault } from "../lint-vault";
 import { pickOne } from "../ui/modals";
+import { t } from "../i18n";
 
 export async function lintCommand(core: SaintFlowCore): Promise<void> {
 	const violations = lintVault(core);
@@ -15,8 +16,8 @@ export async function lintCommand(core: SaintFlowCore): Promise<void> {
 export function lintFileAndNotify(core: SaintFlowCore, file: TFile): void {
 	const violations = lintFile(core, file);
 	if (violations.length === 0) return;
-	const lines = violations.slice(0, 3).map((v) => `· [${RULE_LABEL[v.rule]}] ${v.message}`);
-	if (violations.length > 3) lines.push(`외 ${violations.length - 3}건`);
+	const lines = violations.slice(0, 3).map((v) => `· [${ruleLabel(v.rule)}] ${v.message}`);
+	if (violations.length > 3) lines.push(t("외 {0}건", violations.length - 3));
 	new Notice([`${file.basename}`, ...lines].join("\n"), 8000);
 }
 
@@ -24,7 +25,7 @@ export function lintFileAndNotify(core: SaintFlowCore, file: TFile): void {
 export function lintOnStartup(core: SaintFlowCore): void {
 	const violations = lintVault(core);
 	if (violations.length === 0) return;
-	new Notice(`SaintFlow 규칙 위반 ${violations.length}건. "C15 규칙 검사"로 확인하세요.`, 8000);
+	new Notice(t("SaintFlow 규칙 위반 {0}건. \"C15 규칙 검사\"로 확인하세요.", violations.length), 8000);
 }
 
 export class LintModal extends Modal {
@@ -44,19 +45,19 @@ export class LintModal extends Modal {
 	private render(): void {
 		const { contentEl } = this;
 		contentEl.empty();
-		this.setTitle(`규칙 검사 · 위반 ${this.violations.length}건`);
+		this.setTitle(t("규칙 검사 · 위반 {0}건", this.violations.length));
 
 		if (this.violations.length === 0) {
-			contentEl.createDiv({ cls: "saintflow-form-note", text: "위반이 없습니다." });
+			contentEl.createDiv({ cls: "saintflow-form-note", text: t("위반이 없습니다.") });
 			new Setting(contentEl).addButton((btn) =>
-				btn.setButtonText("닫기").setCta().onClick(() => this.close())
+				btn.setButtonText(t("닫기")).setCta().onClick(() => this.close())
 			);
 			return;
 		}
 
 		const list = contentEl.createDiv({ cls: "saintflow-lint-list" });
 		for (const group of groupByRule(this.violations)) {
-			list.createEl("h4", { text: `${RULE_LABEL[group.rule]} (${group.items.length})` });
+			list.createEl("h4", { text: `${ruleLabel(group.rule)} (${group.items.length})` });
 			for (const violation of group.items) {
 				this.renderRow(list, violation);
 			}
@@ -64,12 +65,12 @@ export class LintModal extends Modal {
 
 		new Setting(contentEl)
 			.addButton((btn) =>
-				btn.setButtonText("다시 검사").onClick(() => {
+				btn.setButtonText(t("다시 검사")).onClick(() => {
 					this.violations = lintVault(this.core);
 					this.render();
 				})
 			)
-			.addButton((btn) => btn.setButtonText("닫기").setCta().onClick(() => this.close()));
+			.addButton((btn) => btn.setButtonText(t("닫기")).setCta().onClick(() => this.close()));
 	}
 
 	private renderRow(container: HTMLElement, violation: Violation): void {
@@ -79,7 +80,7 @@ export class LintModal extends Modal {
 		setting.addExtraButton((btn) =>
 			btn
 				.setIcon("file-text")
-				.setTooltip("파일 열기")
+				.setTooltip(t("파일 열기"))
 				.onClick(async () => {
 					await this.openPath(violation.path);
 					this.close();
@@ -98,7 +99,7 @@ export class LintModal extends Modal {
 						pickOne(
 							this.app,
 							values.map((v) => ({ value: v, label: v })),
-							`${key} 값`
+							t("{0} 값", key)
 						),
 					openFile: async (file) => {
 						await this.app.workspace.getLeaf(false).openFile(file);
@@ -116,7 +117,7 @@ export class LintModal extends Modal {
 	private async openPath(path: string): Promise<void> {
 		const file = this.app.vault.getAbstractFileByPath(path);
 		if (file instanceof TFile) await this.app.workspace.getLeaf(false).openFile(file);
-		else new Notice(`폴더입니다: ${path}`);
+		else new Notice(t("폴더입니다: {0}", path));
 	}
 
 	onClose(): void {

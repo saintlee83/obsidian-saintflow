@@ -9,21 +9,36 @@
 import { MarkdownPostProcessorContext, Notice, TFile } from "obsidian";
 import { createInContextCommand } from "../commands/c3-create-in-context";
 import type { SaintFlowCore } from "../core";
-import { CreatableType, TYPE_LABEL } from "../model";
+import { CreatableType, typeLabel } from "../model";
 import { typeOf } from "../vault-io";
 import { parseBlock, validateTypes } from "./block-syntax";
+import { t } from "../i18n";
 
-const SHORT_LABEL: Partial<Record<CreatableType, string>> = {
-	task: "Task",
-	project: "Project",
-	area: "Area",
-	working: "Working",
-	output: "Output",
-	source: "Source",
-	zettel: "Zettel",
-	map: "Map",
-	"review-close": "종료 검토",
-};
+/** 버튼에 쓰는 짧은 이름. 없으면 유형 라벨을 씁니다. */
+function shortLabel(type: CreatableType): string {
+	switch (type) {
+		case "task":
+			return "Task";
+		case "project":
+			return "Project";
+		case "area":
+			return "Area";
+		case "working":
+			return "Working";
+		case "output":
+			return "Output";
+		case "source":
+			return "Source";
+		case "zettel":
+			return "Zettel";
+		case "map":
+			return "Map";
+		case "review-close":
+			return t("종료 검토");
+		default:
+			return typeLabel(type);
+	}
+}
 
 export function registerNewBlock(
 	core: SaintFlowCore,
@@ -36,7 +51,7 @@ export function registerNewBlock(
 		el.empty();
 		const parent = core.app.vault.getAbstractFileByPath(ctx.sourcePath);
 		if (!(parent instanceof TFile)) {
-			el.createDiv({ cls: "saintflow-block-error", text: "이 블록이 놓인 노트를 찾을 수 없습니다." });
+			el.createDiv({ cls: "saintflow-block-error", text: t("이 블록이 놓인 노트를 찾을 수 없습니다.") });
 			return;
 		}
 
@@ -48,13 +63,13 @@ export function registerNewBlock(
 		if (allowed.length > 0) {
 			const row = el.createDiv({ cls: "saintflow-new-block" });
 			for (const type of allowed) {
-				const btn = row.createEl("button", { text: `+ ${SHORT_LABEL[type] ?? TYPE_LABEL[type]}` });
+				const btn = row.createEl("button", { text: `+ ${shortLabel(type)}` });
 				btn.addEventListener("click", async () => {
 					try {
 						await createInContextCommand(core, { parent, childType: type });
 					} catch (err) {
 						console.error("[SaintFlow]", err);
-						new Notice(`만들지 못했습니다: ${err instanceof Error ? err.message : String(err)}`);
+						new Notice(t("만들지 못했습니다: {0}", err instanceof Error ? err.message : String(err)));
 					}
 				});
 			}

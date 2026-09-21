@@ -6,25 +6,26 @@ import type { SaintFlowCore } from "../core";
 import { sanitizeFileName } from "../naming";
 import { promptText } from "../ui/modals";
 import { createNote } from "../vault-io";
+import { t } from "../i18n";
 
 export async function captureCommand(core: SaintFlowCore, open = false): Promise<TFile | null> {
 	const raw = await promptText(core.app, {
-		title: "수집",
-		description: "지금 신경 쓰이는 것을 한 줄로 적습니다. 무엇인지는 나중에 분류에서 정합니다.",
-		placeholder: "회의 때 나온 아이디어",
-		cta: "수집함에 넣기",
+		title: t("수집"),
+		description: t("지금 신경 쓰이는 것을 한 줄로 적습니다. 무엇인지는 나중에 분류에서 정합니다."),
+		placeholder: t("회의 때 나온 아이디어"),
+		cta: t("수집함에 넣기"),
 	});
 	if (raw === null) return null;
 
 	const text = raw.trim();
 	if (text === "") {
-		new Notice("내용이 비어 있습니다.");
+		new Notice(t("내용이 비어 있습니다."));
 		return null;
 	}
 
 	const name = sanitizeFileName(text);
 	if (!name) {
-		new Notice("파일명으로 쓸 수 있는 글자가 없습니다.");
+		new Notice(t("파일명으로 쓸 수 있는 글자가 없습니다."));
 		return null;
 	}
 
@@ -34,6 +35,6 @@ export async function captureCommand(core: SaintFlowCore, open = false): Promise
 	core.index.invalidate();
 
 	if (open) await core.app.workspace.getLeaf(false).openFile(file);
-	else new Notice(`수집함: ${file.basename}`);
+	else new Notice(t("수집함: {0}", file.basename));
 	return file;
 }

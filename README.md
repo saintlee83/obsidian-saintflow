@@ -9,9 +9,9 @@ change the document first.
 - Division of labour (5.2): Bases owns the views, the plugin owns creation, mutation and check computation.
 - The plugin never writes user prose (rule 6). All it produces is skeletons and link lines.
 
-> The plugin UI (command names, modals, notices) is in Korean, because the vault it serves is Korean.
-> Command names below are quoted exactly as they appear in Obsidian's command palette.
-> A Korean version of this README is in [README.ko.md](README.ko.md).
+> The plugin UI follows Obsidian's own language setting — see [Language](#language).
+> Command names below are the English ones; in a Korean Obsidian the palette shows the Korean names,
+> which are listed in [README.ko.md](README.ko.md).
 
 ## Build
 
@@ -40,31 +40,31 @@ After building, enable it in Obsidian under Settings → Community plugins → S
 
 | ID | Command palette | Available when | What it does |
 | --- | --- | --- | --- |
-| C1 | `C1 수집` (capture, ribbon icon) | Anywhere | One line of input → a file in `0_Sweep/`. Duplicates get a numeric suffix |
-| C2 | `C2 분류` (arrange) | Active file is in `0_Sweep/` | Pick a type → type-specific input → merge template properties (body preserved) → apply the naming rule → move to its home folder |
-| C3 | `C3 맥락 생성` (create in context) | Active file is a parent under 2.4 | Pick an allowed type → enter a title → relations recorded automatically → defaults → open the new note |
-| C4 | `C4 새 프로젝트` / `C4 새 영역` (new project / new area) | Anywhere | Create the container and its hub. Refused if the completion criterion is empty |
-| C5 | `C5 관계 지정` (set relation) | File has the relevant field | Fill `project`, `area`, `sources`, `uses` through a type-filtered picker |
-| C6 | `C6 Zettel 연결 추가` (link zettel) | Active file is a Zettel | Append `- [[X]] — reason` to the links section. Refused if the reason is empty |
-| C7 | `C7 상태 전환` (change status) | Task, Project, Zettel, Output | Check the transition conditions. Status is unchanged if they are not met |
-| C8 | `C8 회상 세션 시작` / `C8 회상 채점` (recall session / grade recall) | Session: anywhere. Grading: a recall Zettel | Create the session note, update `box`, `last_reviewed`, `last_result` and the retrieval log |
-| C9 | `C9 프로젝트 종료` (close project) | Active file is a `P-` hub | Verdict → confirm `uses` → harvest `W-` notes → handle remaining Tasks → `done` → `R-종료-<name>` → archive the container |
-| C10 | `C10 주간 검토` (weekly review) | Anywhere | Create `R-YYYY-Www` → write the 2.3 check values into the "점검 스냅샷" section (+ the C20 report) |
+| C1 | `C1 Capture` (ribbon icon) | Anywhere | One line of input → a file in `0_Sweep/`. Duplicates get a numeric suffix |
+| C2 | `C2 Arrange` | Active file is in `0_Sweep/` | Pick a type → type-specific input → merge template properties (body preserved) → apply the naming rule → move to its home folder |
+| C3 | `C3 Create in context` | Active file is a parent under 2.4 | Pick an allowed type → enter a title → relations recorded automatically → defaults → open the new note |
+| C4 | `C4 New project` / `C4 New area` | Anywhere | Create the container and its hub. Refused if the completion criterion is empty |
+| C5 | `C5 Set relation` | File has the relevant field | Fill `project`, `area`, `sources`, `uses` through a type-filtered picker |
+| C6 | `C6 Add Zettel link` | Active file is a Zettel | Append `- [[X]] — reason` to the links section. Refused if the reason is empty |
+| C7 | `C7 Change status` | Task, Project, Zettel, Output | Check the transition conditions. Status is unchanged if they are not met |
+| C8 | `C8 Start recall session` / `C8 Grade recall` | Session: anywhere. Grading: a recall Zettel | Create the session note, update `box`, `last_reviewed`, `last_result` and the retrieval log |
+| C9 | `C9 Close project` | Active file is a `P-` hub | Verdict → confirm `uses` → harvest `W-` notes → handle remaining Tasks → `done` → `R-종료-<name>` → archive the container |
+| C10 | `C10 Weekly review` | Anywhere | Create `R-YYYY-Www` → write the 2.3 check values into the "점검 스냅샷" section (+ the C20 report) |
 | C11 | `saintflow-new` code block | The note holding the block is the parent | Render buttons for the allowed types → run C3 |
-| C12 | `C12 Inbox 처리 모드` (inbox mode) | `0_Sweep` is not empty | Open files one by one in creation order and present the decision sequence → two-minute rule / arrange / skip / delete → a processing summary |
-| C13 | `C13 Source에서 Zettel 추출` (extract zettel) | Cursor on the "추출할 생각" checklist of a Source | Item text becomes the title candidate → create a seed Zettel → tick the item and replace it with a link |
-| C14 | `C14 선택 영역 승격` (promote selection) | Text selected in a `W-` note | **Move** the selected text into a Zettel (a thought) or a Source (key content), leaving only a link behind |
-| C15 | `C15 규칙 검사` (lint) | Anywhere (also on startup / on rename, per settings) | Scan the vault → a list per rule → open or quick-fix each item |
-| C16 | `C16 SaintFlow 패널 열기` (open panel, ribbon icon) | Sidebar | Always-visible check counts; click for the list or the Bases view |
-| C17 | `C17 Home 열기` (open Home) | Automatic on startup (setting) | Make Home the active tab once the workspace has loaded |
-| C18 | `C18 허브 열기` (open hub) | A file inside a container, or the folder menu | Jump to the container's hub. Offer to create it if missing. Hubs are marked in the file explorer |
-| C19 | `C19 스키마 마이그레이션` (migrate schema) | Run manually (announced when the version rises) | Compare the schema against frontmatter → preview → apply. Body untouched, idempotent |
-| C20 | `C20 점검 리포트 내보내기` (export report) | Run manually, automatic during C10 | Write `9_System/reports/YYYY-MM-DD.json` |
+| C12 | `C12 Inbox mode` | `0_Sweep` is not empty | Open files one by one in creation order and present the decision sequence → two-minute rule / arrange / skip / delete → a processing summary |
+| C13 | `C13 Extract Zettel from Source` | Cursor on the "추출할 생각" checklist of a Source | Item text becomes the title candidate → create a seed Zettel → tick the item and replace it with a link |
+| C14 | `C14 Promote selection` | Text selected in a `W-` note | **Move** the selected text into a Zettel (a thought) or a Source (key content), leaving only a link behind |
+| C15 | `C15 Check rules` | Anywhere (also on startup / on rename, per settings) | Scan the vault → a list per rule → open or quick-fix each item |
+| C16 | `C16 Open SaintFlow panel` (ribbon icon) | Sidebar | Always-visible check counts; click for the list or the Bases view |
+| C17 | `C17 Open Home` | Automatic on startup (setting) | Make Home the active tab once the workspace has loaded |
+| C18 | `C18 Open hub` | A file inside a container, or the folder menu | Jump to the container's hub. Offer to create it if missing. Hubs are marked in the file explorer |
+| C19 | `C19 Migrate schema` | Run manually (announced when the version rises) | Compare the schema against frontmatter → preview → apply. Body untouched, idempotent |
+| C20 | `C20 Export check report` | Run manually, automatic during C10 | Write `9_System/reports/YYYY-MM-DD.json` |
 
-The `점검 스냅샷 보기` (show check snapshot) command creates no note; it shows the counts in a notice.
+The `Show check snapshot` command creates no note; it shows the counts in a notice.
 
-The file explorer context menu carries entries too: "분류" (arrange) on files in `0_Sweep`,
-"여기서 만들기" (create here) on notes that can be parents, and "허브 열기" (open hub) on container folders.
+The file explorer context menu carries entries too: "Arrange" on files in `0_Sweep`,
+"Create here" on notes that can be parents, and "Open hub" on container folders.
 
 ### C11 block syntax
 
@@ -107,8 +107,8 @@ The template folder is excluded from the checks: those files are skeletons with 
 {
   "schema": "saintflow-report/1",
   "generated": "2026-09-21",
-  "checks": [{ "key": "inbox", "title": "수집함", "count": 1, "items": [{ "path": "...", "name": "...", "note": "..." }] }],
-  "violations": [{ "rule": "home", "ruleLabel": "유형과 거처", "path": "...", "name": "...", "message": "...", "fix": "move" }],
+  "checks": [{ "key": "inbox", "title": "Inbox", "count": 1, "items": [{ "path": "...", "name": "...", "note": "..." }] }],
+  "violations": [{ "rule": "home", "ruleLabel": "Type vs. home folder", "path": "...", "name": "...", "message": "...", "fix": "move" }],
   "totals": {
     "checks": { "inbox": 1 },
     "violations": { "home": 1 },
@@ -117,6 +117,9 @@ The template folder is excluded from the checks: those files are skeletons with 
   }
 }
 ```
+
+`key`, `rule` and `fix` are stable identifiers. `title`, `ruleLabel` and `message` are labels, so they
+come out in whatever language the plugin is running in.
 
 ## Layout
 
@@ -132,6 +135,7 @@ saintflow/
 │   ├── model.ts               2.2 types, 2.4 parent/child matrix           (pure)
 │   ├── schema.ts              2.2 schema and check rules                   (pure)
 │   ├── config.ts              settings values and defaults                 (pure)
+│   ├── i18n.ts                UI language and the message table            (pure)
 │   ├── placement.ts           3.1 home folders, 3.5 file name generation   (pure)
 │   ├── lint.ts                C15 judgement rules                          (pure)
 │   ├── blocks/block-syntax.ts C11 block syntax                             (pure)
@@ -147,12 +151,33 @@ saintflow/
 │   ├── views/panel.ts         C16 sidebar panel
 │   └── commands/              C1–C20
 └── tests/
-    ├── *.test.ts              unit tests for the pure functions
+    ├── *.test.ts              unit tests for the pure functions, incl. the message table
     └── fixture-vault/         6.2 fixture, seeded C15 violations, acceptance test procedure
 ```
 
 Modules marked `(pure)` do not import `obsidian`. As 5.4 of the design document requires, the
 judgement rules are separated into pure functions so they can be unit tested.
+
+## Language
+
+The plugin UI follows Obsidian's own language setting. Korean and English ship today; any other
+language falls back to English, which is Obsidian's own default.
+
+- The language is read once, in `onload`, before commands are registered: `localStorage.language`
+  (where Obsidian keeps the setting), then moment's locale, then the browser language. Obsidian
+  reloads when you change its language, so the plugin picks the new one up with it.
+- `src/i18n.ts` holds the whole message table. The Korean source string is the key, so an untranslated
+  message falls back to Korean rather than to a missing-key placeholder.
+- **Only screen text is translated.** What ends up in the vault keeps the vocabulary the design
+  document fixed: section headings (`sections.ts`), template skeletons (`templates.ts`), the
+  `R-종료-` name (`placement.ts`), Bases view names (`panel.ts`), and every frontmatter key and value.
+  Translating those would break links, `findSection` and the C15 checks.
+- Notes the plugin generates — the weekly review snapshot, the recall session note, the C20 report's
+  labels — come out in the running language. C8 finds the `판정:` / `Verdict:` line of a session note
+  through every known translation, so grading still works if you switch languages mid-week.
+- To add a language: add a table to `TABLES` in `src/i18n.ts` and teach `normalizeLocale` its tag.
+  `tests/i18n.test.ts` then fails until every message used in the code has a translation, and fails
+  again if a translation is left behind when the Korean source changes.
 
 ## Implementation notes
 

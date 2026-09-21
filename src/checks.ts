@@ -2,6 +2,7 @@
 // obsidian을 import하지 않습니다. 단위 테스트 대상입니다(설계안 5.4).
 
 import { addDays, diffDays, normalizeISO } from "./dates";
+import { t } from "./i18n";
 
 export const DEFAULT_RECALL_INTERVALS = [1, 3, 7, 14, 30];
 export const MAX_BOX = 5;
@@ -97,11 +98,11 @@ export function evergreenBlockers(input: {
 	links: { target: string; reason: string }[];
 }): string[] {
 	const problems: string[] = [];
-	if (input.thought.trim() === "") problems.push("생각 섹션이 비어 있습니다.");
+	if (input.thought.trim() === "") problems.push(t("생각 섹션이 비어 있습니다."));
 	if (input.links.length < 2) {
-		problems.push(`연결이 ${input.links.length}개입니다. 2개 이상이어야 합니다.`);
+		problems.push(t("연결이 {0}개입니다. 2개 이상이어야 합니다.", input.links.length));
 	}
 	const missing = input.links.filter((l) => l.reason.trim() === "").map((l) => l.target);
-	if (missing.length > 0) problems.push(`연결 이유가 없습니다: ${missing.join(", ")}`);
+	if (missing.length > 0) problems.push(t("연결 이유가 없습니다: {0}", missing.join(", ")));
 	return problems;
 }

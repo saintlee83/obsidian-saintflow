@@ -126,6 +126,7 @@ saintflow/
 │   ├── model.ts               2.2 유형, 2.4 매트릭스             (순수)
 │   ├── schema.ts              2.2 스키마와 검사 규칙             (순수)
 │   ├── config.ts              설정 값과 기본값                   (순수)
+│   ├── i18n.ts                UI 언어와 메시지 표                (순수)
 │   ├── placement.ts           3.1 거처, 3.5 파일명 생성          (순수)
 │   ├── lint.ts                C15 판정 규칙                      (순수)
 │   ├── blocks/block-syntax.ts C11 블록 문법                      (순수)
@@ -139,12 +140,32 @@ saintflow/
 │   ├── views/panel.ts         C16 사이드바 패널
 │   └── commands/              C1~C20
 └── tests/
-    ├── *.test.ts              순수 함수 단위 테스트
+    ├── *.test.ts              순수 함수 단위 테스트, 메시지 표 검사
     └── fixture-vault/         6.2 픽스처, 심어 둔 C15 위반, 수용 테스트 절차
 ```
 
 `(순수)` 표시한 모듈은 `obsidian`을 import하지 않습니다. 설계안 5.4가 요구하는 대로
 판정 규칙을 순수 함수로 떼어 두어 단위 테스트할 수 있게 했습니다.
+
+## 언어
+
+화면 언어는 Obsidian 언어 설정을 따릅니다. 지금은 한국어와 영어가 있고, 그 밖의 언어는
+Obsidian 기본값인 영어로 떨어집니다.
+
+- 언어는 `onload`에서 명령을 등록하기 전에 한 번 정합니다. Obsidian이 설정을 두는
+  `localStorage.language`를 먼저 보고, 없으면 moment 로케일과 브라우저 언어를 봅니다.
+  언어를 바꾸면 Obsidian이 다시 로드되므로 플러그인도 같이 따라갑니다.
+- 메시지 표는 `src/i18n.ts` 하나입니다. 한국어 원문이 곧 키라서 번역이 없으면 빈 칸이 아니라
+  원문이 그대로 나옵니다.
+- **번역하는 것은 화면 문구뿐입니다.** vault에 남는 말은 설계안이 정한 그대로 둡니다.
+  섹션 이름(`sections.ts`), 템플릿 골격(`templates.ts`), `R-종료-` 이름(`placement.ts`),
+  Bases 보기 이름(`panel.ts`), frontmatter의 키와 값이 그렇습니다. 이것들을 번역하면 링크와
+  `findSection`과 C15 검사가 깨집니다.
+- 플러그인이 만드는 글(주간 검토의 점검 스냅샷, 회상 세션 노트, C20 리포트의 `title`과
+  `ruleLabel`)은 그때의 언어로 나옵니다. `key`, `rule`, `fix`는 언어와 무관한 식별자입니다.
+  C8은 세션 노트의 `판정:` 줄을 모든 번역으로 찾으므로 중간에 언어를 바꿔도 채점이 됩니다.
+- 언어를 더하려면 `src/i18n.ts`의 `TABLES`에 표를 넣고 `normalizeLocale`에 태그를 알려 줍니다.
+  `tests/i18n.test.ts`가 빠진 번역과 남은 번역을 잡습니다.
 
 ## 구현 메모
 

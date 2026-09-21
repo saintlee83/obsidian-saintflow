@@ -1,6 +1,7 @@
 // C11 블록 문법 해석. obsidian에 기대지 않는 순수 함수라 단위 테스트할 수 있습니다.
 
 import { CreatableType, allowedChildren } from "../model";
+import { t } from "../i18n";
 
 export interface ParsedBlock {
 	types: string[];
@@ -16,19 +17,19 @@ export function parseBlock(source: string): ParsedBlock {
 		if (line === "" || line.startsWith("#")) continue;
 		const m = /^([A-Za-z_]+)\s*:\s*(.*)$/.exec(line);
 		if (!m) {
-			errors.push(`읽을 수 없는 줄입니다: ${line}`);
+			errors.push(t("읽을 수 없는 줄입니다: {0}", line));
 			continue;
 		}
 		if (m[1] !== "types") {
-			errors.push(`알 수 없는 키입니다: ${m[1]}`);
+			errors.push(t("알 수 없는 키입니다: {0}", m[1]));
 			continue;
 		}
-		for (const t of m[2].split(",")) {
-			const value = t.trim();
+		for (const part of m[2].split(",")) {
+			const value = part.trim();
 			if (value) types.push(value);
 		}
 	}
-	if (types.length === 0 && errors.length === 0) errors.push("types가 비어 있습니다.");
+	if (types.length === 0 && errors.length === 0) errors.push(t("types가 비어 있습니다."));
 	return { types, errors };
 }
 
@@ -41,14 +42,14 @@ export function validateTypes(
 	if (permitted.length === 0) {
 		return {
 			allowed: [],
-			errors: [`type: ${parentType ?? "(없음)"} 은(는) 자식을 만들 수 있는 부모가 아닙니다.`],
+			errors: [t("type: {0} 은(는) 자식을 만들 수 있는 부모가 아닙니다.", parentType ?? t("(없음)"))],
 		};
 	}
 	const allowed: CreatableType[] = [];
 	const errors: string[] = [];
-	for (const t of types) {
-		if (permitted.includes(t as CreatableType)) allowed.push(t as CreatableType);
-		else errors.push(`${t}은(는) ${parentType} 맥락에서 만들 수 없습니다. 허용: ${permitted.join(", ")}`);
+	for (const type of types) {
+		if (permitted.includes(type as CreatableType)) allowed.push(type as CreatableType);
+		else errors.push(t("{0}은(는) {1} 맥락에서 만들 수 없습니다. 허용: {2}", type, parentType, permitted.join(", ")));
 	}
 	return { allowed, errors };
 }

@@ -8,6 +8,7 @@ import { createTypedNote, inheritedRelations } from "../relations";
 import { SECTION, replaceSection } from "../sections";
 import { pickOne, promptRequired } from "../ui/modals";
 import { frontMatterOf, typeOf } from "../vault-io";
+import { t } from "../i18n";
 
 type Target = "zettel" | "source";
 
@@ -27,32 +28,32 @@ export async function promoteSelectionCommand(
 ): Promise<void> {
 	const selection = editor.getSelection();
 	if (selection.trim() === "") {
-		new Notice("승격할 텍스트를 먼저 고르세요.");
+		new Notice(t("승격할 텍스트를 먼저 고르세요."));
 		return;
 	}
 
 	const target = await pickOne<Target>(
 		core.app,
 		[
-			{ value: "zettel", label: "Zettel", description: "고른 텍스트가 생각 섹션으로 갑니다. seed로 만듭니다." },
-			{ value: "source", label: "Source", description: "고른 텍스트가 핵심 내용 섹션으로 갑니다." },
+			{ value: "zettel", label: "Zettel", description: t("고른 텍스트가 생각 섹션으로 갑니다. seed로 만듭니다.") },
+			{ value: "source", label: "Source", description: t("고른 텍스트가 핵심 내용 섹션으로 갑니다.") },
 		],
-		"무엇으로 승격할까요?"
+		t("무엇으로 승격할까요?")
 	);
 	if (!target) return;
 
 	const title = await promptRequired(
 		core.app,
 		{
-			title: target === "zettel" ? "Zettel 제목" : "Source 제목",
+			title: target === "zettel" ? t("Zettel 제목") : t("Source 제목"),
 			description:
 				target === "zettel"
-					? "주장 문장으로 씁니다. 접두사는 붙이지 않습니다."
-					: "원제목을 씁니다. S- 접두사는 자동으로 붙습니다.",
+					? t("주장 문장으로 씁니다. 접두사는 붙이지 않습니다.")
+					: t("원제목을 씁니다. S- 접두사는 자동으로 붙습니다."),
 			value: firstLine(selection),
-			cta: "승격",
+			cta: t("승격"),
 		},
-		"제목이 비어 있어 승격하지 않았습니다."
+		t("제목이 비어 있어 승격하지 않았습니다.")
 	);
 	if (!title) return;
 
@@ -74,7 +75,7 @@ export async function promoteSelectionCommand(
 
 	core.index.invalidate();
 	await core.app.workspace.getLeaf(false).openFile(created);
-	new Notice(`승격: ${created.basename}`);
+	new Notice(t("승격: {0}", created.basename));
 }
 
 function firstLine(text: string): string {

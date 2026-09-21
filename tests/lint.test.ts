@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { DEFAULT_SETTINGS, SaintFlowSettings } from "../src/config";
-import { FolderFacts, NoteFacts, RULE_LABEL, RuleId, checkFolder, checkNote, groupByRule } from "../src/lint";
+import { FolderFacts, NoteFacts, RuleId, checkFolder, checkNote, groupByRule, ruleLabel } from "../src/lint";
+import { setLocale } from "../src/i18n";
+
+// 이 테스트는 원문(한국어) 문구를 그대로 검사합니다.
+setLocale("ko");
 
 const settings: SaintFlowSettings = structuredClone(DEFAULT_SETTINGS);
 
@@ -245,6 +249,6 @@ describe("groupByRule", () => {
 		];
 		const groups = groupByRule(violations);
 		assert.deepEqual(groups.map((g) => g.rule), ["home", "value-range"]);
-		assert.equal(RULE_LABEL[groups[0].rule], "유형과 거처");
+		assert.equal(ruleLabel(groups[0].rule), "유형과 거처");
 	});
 });

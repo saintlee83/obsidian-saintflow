@@ -10,6 +10,7 @@ import { SECTION, replaceSection } from "../sections";
 import { templateContent } from "../templates";
 import { createNote, fileByBaseName, setFrontMatter, updateBody } from "../vault-io";
 import { writeReport } from "./c20-report";
+import { t } from "../i18n";
 
 export async function weeklyReviewCommand(core: SaintFlowCore): Promise<TFile | null> {
 	const today = todayISO();
@@ -40,18 +41,18 @@ export async function weeklyReviewCommand(core: SaintFlowCore): Promise<TFile | 
 
 	await core.app.workspace.getLeaf(false).openFile(file);
 	const total = groups.reduce((n, g) => n + g.items.length, 0);
-	new Notice([`${name} · ${total}건`, report ? `리포트: ${report.path}` : ""].filter(Boolean).join("\n"));
+	new Notice([t("{0} · {1}건", name, total), report ? t("리포트: {0}", report.path) : ""].filter(Boolean).join("\n"));
 	return file;
 }
 
 export function renderSnapshot(groups: SnapshotGroup[], today: string): string {
-	const lines: string[] = [`계산 시각: ${today}`, "", "| 점검 | 개수 |", "| --- | --- |"];
+	const lines: string[] = [t("계산 시각: {0}", today), "", t("| 점검 | 개수 |"), "| --- | --- |"];
 	for (const group of groups) lines.push(`| ${group.title} | ${group.items.length} |`);
 
 	for (const group of groups) {
 		lines.push("", `### ${group.title} (${group.items.length})`);
 		if (group.items.length === 0) {
-			lines.push("- 없음");
+			lines.push(t("- 없음"));
 			continue;
 		}
 		for (const item of group.items) {

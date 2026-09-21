@@ -5,10 +5,11 @@ import { Notice, TFile, normalizePath } from "obsidian";
 import type { SaintFlowCore } from "../core";
 import { todayISO } from "../dates";
 import { computeSnapshot } from "../graph";
-import { RULE_LABEL, Violation } from "../lint";
+import { Violation, ruleLabel } from "../lint";
 import { lintVault } from "../lint-vault";
 import { joinPath } from "../naming";
 import { ensureFolder } from "../vault-io";
+import { t } from "../i18n";
 
 export const REPORT_SCHEMA = "saintflow-report/1";
 
@@ -79,7 +80,7 @@ export function buildReport(core: SaintFlowCore, today: string = todayISO()): Re
 function toReportViolation(violation: Violation): ReportViolation {
 	return {
 		rule: violation.rule,
-		ruleLabel: RULE_LABEL[violation.rule],
+		ruleLabel: ruleLabel(violation.rule),
 		path: violation.path,
 		name: violation.name,
 		message: violation.message,
@@ -113,8 +114,8 @@ export async function writeReport(core: SaintFlowCore, today: string = todayISO(
 export async function reportCommand(core: SaintFlowCore): Promise<void> {
 	const file = await writeReport(core);
 	if (!file) {
-		new Notice("리포트를 저장하지 못했습니다.");
+		new Notice(t("리포트를 저장하지 못했습니다."));
 		return;
 	}
-	new Notice(`점검 리포트: ${file.path}`);
+	new Notice(t("점검 리포트: {0}", file.path));
 }

@@ -7,6 +7,7 @@ import { containerOf } from "../lint-vault";
 import { joinPath } from "../naming";
 import { newAreaCommand, newProjectCommand } from "./c4-new-container";
 import { confirm } from "../ui/modals";
+import { t } from "../i18n";
 
 /** 이 파일이 속한 컨테이너 폴더. 없으면 null입니다. */
 export function containerFolderFor(core: SaintFlowCore, file: TFile): TFolder | null {
@@ -33,7 +34,7 @@ export function isContainerFolder(core: SaintFlowCore, folder: TFolder): boolean
 export async function openHubCommand(core: SaintFlowCore, folder?: TFolder): Promise<void> {
 	const target = folder ?? containerFromActiveFile(core);
 	if (!target) {
-		new Notice("컨테이너 안의 파일이 아닙니다.");
+		new Notice(t("컨테이너 안의 파일이 아닙니다."));
 		return;
 	}
 
@@ -44,9 +45,9 @@ export async function openHubCommand(core: SaintFlowCore, folder?: TFolder): Pro
 	}
 
 	const make = await confirm(core.app, {
-		title: "허브가 없습니다",
-		message: `${target.name} 컨테이너에 같은 이름의 허브 노트가 없습니다. 지금 만들까요?`,
-		cta: "만들기",
+		title: t("허브가 없습니다"),
+		message: t("{0} 컨테이너에 같은 이름의 허브 노트가 없습니다. 지금 만들까요?", target.name),
+		cta: t("만들기"),
 	});
 	if (!make) return;
 

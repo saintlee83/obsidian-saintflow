@@ -10,6 +10,7 @@ import { closeReviewName, fileNameFor, homeFolderFor, prefixFor } from "./placem
 import { SECTION, appendToSection } from "./sections";
 import { TemplateVars, templateContent } from "./templates";
 import { containerFolderOf, createNote, setFrontMatter, uniqueBaseName, updateBody } from "./vault-io";
+import { t } from "./i18n";
 
 export { closeReviewName, fileNameFor, homeFolderFor, prefixFor };
 
@@ -37,11 +38,11 @@ export async function createTypedNote(
 ): Promise<TFile | null> {
 	const desired = fileNameFor(core.settings, type, opts.title);
 	if (!desired) {
-		new Notice("파일명 규칙을 적용하면 이름이 비어 있습니다. 다른 제목을 쓰세요.");
+		new Notice(t("파일명 규칙을 적용하면 이름이 비어 있습니다. 다른 제목을 쓰세요."));
 		return null;
 	}
 	if (type === "zettel" && desired.length > ZETTEL_TITLE_HINT) {
-		new Notice(`Zettel 제목이 ${desired.length}자입니다. ${ZETTEL_TITLE_HINT}자 안팎을 권장합니다.`);
+		new Notice(t("Zettel 제목이 {0}자입니다. {1}자 안팎을 권장합니다.", desired.length, ZETTEL_TITLE_HINT));
 	}
 	// 허브 이름은 컨테이너 폴더 이름과 같아야 하므로(규칙 3) 번호를 먼저 확정합니다.
 	const name = uniqueBaseName(core.app, desired);

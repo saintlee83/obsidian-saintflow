@@ -16,6 +16,7 @@ import { RelationField, SaintType } from "./model";
 import { SECTION } from "./sections";
 import type { SaintFlowSettings } from "./config";
 import { frontMatterOf, isArchived, resolveLink } from "./vault-io";
+import { t } from "./i18n";
 
 const LINK_FIELDS: RelationField[] = ["project", "area", "sources", "uses"];
 
@@ -261,13 +262,13 @@ export function computeSnapshot(
 	}
 
 	return [
-		{ key: "inbox", title: "수집함", items: inbox },
-		{ key: "waiting", title: "대기 중", items: waiting },
-		{ key: "stalled", title: "멈춘 프로젝트", items: stalled },
-		{ key: "orphan", title: "연결 없는 Zettel", items: orphans },
-		{ key: "old_seed", title: "오래된 seed", items: oldSeeds },
-		{ key: "no_uses", title: "uses 없는 결과물", items: noUses },
-		{ key: "due_today", title: "오늘 복습", items: due },
+		{ key: "inbox", title: t("수집함"), items: inbox },
+		{ key: "waiting", title: t("대기 중"), items: waiting },
+		{ key: "stalled", title: t("멈춘 프로젝트"), items: stalled },
+		{ key: "orphan", title: t("연결 없는 Zettel"), items: orphans },
+		{ key: "old_seed", title: t("오래된 seed"), items: oldSeeds },
+		{ key: "no_uses", title: t("uses 없는 결과물"), items: noUses },
+		{ key: "due_today", title: t("오늘 복습"), items: due },
 	];
 }
 

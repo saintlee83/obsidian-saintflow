@@ -2,6 +2,7 @@
 
 import { Notice, TFile, normalizePath } from "obsidian";
 import type { SaintFlowCore } from "../core";
+import { t } from "../i18n";
 
 export function homeFile(core: SaintFlowCore): TFile | null {
 	const path = normalizePath(core.settings.homePath);
@@ -13,7 +14,7 @@ export function homeFile(core: SaintFlowCore): TFile | null {
 export async function openHomeCommand(core: SaintFlowCore, quiet = false): Promise<void> {
 	const file = homeFile(core);
 	if (!file) {
-		if (!quiet) new Notice(`Home 노트를 찾지 못했습니다: ${core.settings.homePath}`);
+		if (!quiet) new Notice(t("Home 노트를 찾지 못했습니다: {0}", core.settings.homePath));
 		return;
 	}
 	await core.app.workspace.getLeaf(false).openFile(file);

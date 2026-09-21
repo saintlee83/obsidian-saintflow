@@ -5,6 +5,7 @@ import { ItemView, TFile, WorkspaceLeaf, setIcon } from "obsidian";
 import type { SaintFlowCore } from "../core";
 import { SnapshotGroup, computeSnapshot } from "../graph";
 import { lintVault } from "../lint-vault";
+import { t } from "../i18n";
 
 export const SAINTFLOW_VIEW = "saintflow-panel";
 
@@ -69,8 +70,8 @@ export class SaintFlowPanel extends ItemView {
 		root.addClass("saintflow-panel");
 
 		const header = root.createDiv({ cls: "saintflow-panel-header" });
-		header.createSpan({ text: "점검" });
-		const refresh = header.createEl("button", { cls: "clickable-icon", attr: { "aria-label": "새로 고침" } });
+		header.createSpan({ text: t("점검") });
+		const refresh = header.createEl("button", { cls: "clickable-icon", attr: { "aria-label": t("새로 고침") } });
 		setIcon(refresh, "refresh-cw");
 		refresh.addEventListener("click", () => this.refresh());
 
@@ -78,9 +79,9 @@ export class SaintFlowPanel extends ItemView {
 		this.renderViolations(root);
 
 		const actions = root.createDiv({ cls: "saintflow-panel-actions" });
-		this.addActionButton(actions, "주간 검토 (C10)", "saintflow:weekly-review");
-		this.addActionButton(actions, "규칙 검사 (C15)", "saintflow:lint");
-		this.addActionButton(actions, "수집함 처리 (C12)", "saintflow:inbox");
+		this.addActionButton(actions, t("주간 검토 (C10)"), "saintflow:weekly-review");
+		this.addActionButton(actions, t("규칙 검사 (C15)"), "saintflow:lint");
+		this.addActionButton(actions, t("수집함 처리 (C12)"), "saintflow:inbox");
 	}
 
 	private renderGroup(root: HTMLElement, group: SnapshotGroup): void {
@@ -102,7 +103,7 @@ export class SaintFlowPanel extends ItemView {
 		if (base && resolved) {
 			const btn = label.createEl("button", {
 				cls: "clickable-icon",
-				attr: { "aria-label": `${base.view} 보기 열기` },
+				attr: { "aria-label": t("{0} 보기 열기", base.view) },
 			});
 			setIcon(btn, "table");
 			btn.addEventListener("click", async (ev) => {
@@ -127,7 +128,7 @@ export class SaintFlowPanel extends ItemView {
 		const row = root.createDiv({ cls: "saintflow-panel-row" });
 		if (this.violationCount === 0) row.addClass("is-empty");
 		const label = row.createDiv({ cls: "saintflow-panel-label" });
-		label.createSpan({ text: "규칙 위반" });
+		label.createSpan({ text: t("규칙 위반") });
 		label.createSpan({ cls: "saintflow-panel-count", text: String(this.violationCount) });
 		label.addEventListener("click", () => {
 			(this.app as unknown as { commands: { executeCommandById(id: string): void } }).commands.executeCommandById(

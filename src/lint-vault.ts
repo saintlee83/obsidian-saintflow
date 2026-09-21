@@ -16,6 +16,7 @@ import { RELATION_FIELDS, RelationField } from "./model";
 import { folderOf } from "./naming";
 import { emptyValueFor, schemaFor } from "./schema";
 import { frontMatterOf, isArchived, moveNote, resolveLink, setFrontMatter } from "./vault-io";
+import { t } from "./i18n";
 
 const LINK_FIELDS = Object.keys(RELATION_FIELDS) as RelationField[];
 
@@ -52,7 +53,7 @@ export function noteFacts(app: App, settings: SaintFlowSettings, file: TFile): N
 	const unresolved = app.metadataCache.unresolvedLinks[file.path] ?? {};
 	for (const [target, count] of Object.entries(unresolved)) {
 		if (count > 0 && !seen.has(target)) {
-			links.push({ field: "본문", target, resolved: false, targetArchived: false });
+			links.push({ field: t("본문"), target, resolved: false, targetArchived: false });
 			seen.add(target);
 		}
 	}
@@ -148,27 +149,27 @@ export async function applyFix(
 	const target = app.vault.getAbstractFileByPath(violation.path);
 	const fix = violation.fix;
 
-	if (fix.kind === "none") return { applied: false, message: "자동으로 고칠 수 없는 항목입니다." };
+	if (fix.kind === "none") return { applied: false, message: t("자동으로 고칠 수 없는 항목입니다.") };
 	if (!(target instanceof TFile)) {
-		return { applied: false, message: "폴더 규칙은 직접 고쳐야 합니다." };
+		return { applied: false, message: t("폴더 규칙은 직접 고쳐야 합니다.") };
 	}
 
 	switch (fix.kind) {
 		case "move": {
-			if (!fix.folder) return { applied: false, message: "이동할 폴더가 없습니다." };
+			if (!fix.folder) return { applied: false, message: t("이동할 폴더가 없습니다.") };
 			await moveNote(app, target, fix.folder);
 			core.index.invalidate();
 			return { applied: true, message: `${target.basename} → ${fix.folder}` };
 		}
 		case "rename": {
-			if (!fix.name) return { applied: false, message: "바꿀 이름이 없습니다." };
+			if (!fix.name) return { applied: false, message: t("바꿀 이름이 없습니다.") };
 			await moveNote(app, target, folderOf(target.path), fix.name);
 			core.index.invalidate();
-			return { applied: true, message: `이름 변경: ${fix.name}` };
+			return { applied: true, message: t("이름 변경: {0}", fix.name) };
 		}
 		case "add-props": {
 			const schema = schemaFor(frontMatterOf(app, target).type);
-			if (!schema) return { applied: false, message: "유형을 알 수 없습니다." };
+			if (!schema) return { applied: false, message: t("유형을 알 수 없습니다.") };
 			await setFrontMatter(app, target, (fm) => {
 				for (const key of fix.keys ?? []) {
 					const field = schema.fields.find((f) => f.key === key);
@@ -178,12 +179,12 @@ export async function applyFix(
 			});
 			core.index.invalidate();
 			await helpers.openFile(target);
-			return { applied: true, message: `속성을 추가했습니다: ${(fix.keys ?? []).join(", ")}` };
+			return { applied: true, message: t("속성을 추가했습니다: {0}", (fix.keys ?? []).join(", ")) };
 		}
 		case "set-value": {
-			if (!fix.key || !fix.values) return { applied: false, message: "고를 값이 없습니다." };
+			if (!fix.key || !fix.values) return { applied: false, message: t("고를 값이 없습니다.") };
 			const picked = await helpers.pickValue(fix.key, fix.values);
-			if (picked === null) return { applied: false, message: "취소했습니다." };
+			if (picked === null) return { applied: false, message: t("취소했습니다.") };
 			await setFrontMatter(app, target, (fm) => {
 				fm[fix.key as string] = coerce(picked);
 			});
@@ -192,7 +193,7 @@ export async function applyFix(
 		}
 		case "open": {
 			await helpers.openFile(target);
-			return { applied: false, message: "파일을 열었습니다." };
+			return { applied: false, message: t("파일을 열었습니다.") };
 		}
 	}
 }
@@ -206,6 +207,6 @@ function coerce(value: string): unknown {
 }
 
 export function noticeForViolations(count: number): void {
-	if (count === 0) new Notice("규칙 위반이 없습니다.");
-	else new Notice(`규칙 위반 ${count}건`);
+	if (count === 0) new Notice(t("규칙 위반이 없습니다."));
+	else new Notice(t("규칙 위반 {0}건", count));
 }

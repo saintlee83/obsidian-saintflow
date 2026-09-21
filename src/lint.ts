@@ -5,6 +5,7 @@ import { SaintType } from "./model";
 import { baseNameOf, folderOf, joinPath } from "./naming";
 import { containerRootFor, fileNameFor, fixedHomeFor, placementKind } from "./placement";
 import { missingRequired, schemaFor, valueProblems } from "./schema";
+import { t } from "./i18n";
 
 export type RuleId =
 	| "home"
@@ -16,16 +17,27 @@ export type RuleId =
 	| "relation"
 	| "value-range";
 
-export const RULE_LABEL: Record<RuleId, string> = {
-	home: "유형과 거처",
-	required: "필수 속성",
-	filename: "파일명",
-	"hub-name": "허브 이름",
-	"container-contents": "컨테이너 내용",
-	"folder-depth": "폴더 깊이",
-	relation: "관계 무결성",
-	"value-range": "값 범위",
-};
+/** 규칙 이름은 화면과 리포트에만 쓰므로 언어 설정을 따릅니다. */
+export function ruleLabel(rule: RuleId): string {
+	switch (rule) {
+		case "home":
+			return t("유형과 거처");
+		case "required":
+			return t("필수 속성");
+		case "filename":
+			return t("파일명");
+		case "hub-name":
+			return t("허브 이름");
+		case "container-contents":
+			return t("컨테이너 내용");
+		case "folder-depth":
+			return t("폴더 깊이");
+		case "relation":
+			return t("관계 무결성");
+		case "value-range":
+			return t("값 범위");
+	}
+}
 
 export type QuickFixKind = "move" | "rename" | "open" | "set-value" | "add-props" | "none";
 
@@ -106,10 +118,14 @@ export function checkNote(facts: NoteFacts, settings: SaintFlowSettings): Violat
 		out.push({
 			...base,
 			rule: "container-contents",
-			message: `${schema.label}이(가) 컨테이너 ${lastSegment(facts.container!)} 안에 있습니다. 관계는 속성으로만 표현합니다.`,
+			message: t(
+				"{0}이(가) 컨테이너 {1} 안에 있습니다. 관계는 속성으로만 표현합니다.",
+				schema.label,
+				lastSegment(facts.container!)
+			),
 			fix: home
-				? { kind: "move", label: `${home}(으)로 이동`, folder: home }
-				: { kind: "open", label: "파일 열기" },
+				? { kind: "move", label: t("{0}(으)로 이동", home), folder: home }
+				: { kind: "open", label: t("파일 열기") },
 		});
 	}
 
@@ -127,8 +143,8 @@ export function checkNote(facts: NoteFacts, settings: SaintFlowSettings): Violat
 				out.push({
 					...base,
 					rule: "hub-name",
-					message: `허브 이름이 컨테이너 폴더 이름(${folderName})과 다릅니다.`,
-					fix: { kind: "rename", label: `${folderName}(으)로 이름 변경`, name: folderName },
+					message: t("허브 이름이 컨테이너 폴더 이름({0})과 다릅니다.", folderName),
+					fix: { kind: "rename", label: t("{0}(으)로 이름 변경", folderName), name: folderName },
 				});
 			}
 		}
@@ -141,8 +157,8 @@ export function checkNote(facts: NoteFacts, settings: SaintFlowSettings): Violat
 			out.push({
 				...base,
 				rule: "filename",
-				message: `파일명 규칙에 맞지 않습니다. 제안: ${expected}`,
-				fix: { kind: "rename", label: `${expected}(으)로 이름 변경`, name: expected },
+				message: t("파일명 규칙에 맞지 않습니다. 제안: {0}", expected),
+				fix: { kind: "rename", label: t("{0}(으)로 이름 변경", expected), name: expected },
 			});
 		}
 	}
@@ -153,8 +169,8 @@ export function checkNote(facts: NoteFacts, settings: SaintFlowSettings): Violat
 		out.push({
 			...base,
 			rule: "required",
-			message: `필수 속성이 비어 있습니다: ${missing.join(", ")}`,
-			fix: { kind: "add-props", label: "속성 추가 후 열기", keys: missing },
+			message: t("필수 속성이 비어 있습니다: {0}", missing.join(", ")),
+			fix: { kind: "add-props", label: t("속성 추가 후 열기"), keys: missing },
 		});
 	}
 
@@ -165,8 +181,8 @@ export function checkNote(facts: NoteFacts, settings: SaintFlowSettings): Violat
 			rule: "value-range",
 			message: problem.message,
 			fix: problem.allowed
-				? { kind: "set-value", label: `${problem.key} 값 고르기`, key: problem.key, values: problem.allowed }
-				: { kind: "open", label: "파일 열기" },
+				? { kind: "set-value", label: t("{0} 값 고르기", problem.key), key: problem.key, values: problem.allowed }
+				: { kind: "open", label: t("파일 열기") },
 		});
 	}
 
@@ -176,8 +192,8 @@ export function checkNote(facts: NoteFacts, settings: SaintFlowSettings): Violat
 			out.push({
 				...base,
 				rule: "relation",
-				message: `${link.field}의 링크 [[${link.target}]]이(가) 해석되지 않습니다.`,
-				fix: { kind: "open", label: "파일 열기" },
+				message: t("{0}의 링크 [[{1}]]이(가) 해석되지 않습니다.", link.field, link.target),
+				fix: { kind: "open", label: t("파일 열기") },
 			});
 			continue;
 		}
@@ -191,8 +207,8 @@ export function checkNote(facts: NoteFacts, settings: SaintFlowSettings): Violat
 			out.push({
 				...base,
 				rule: "relation",
-				message: `보관된 ${link.field} [[${link.target}]]을(를) 가리키는 활성 Task입니다.`,
-				fix: { kind: "open", label: "파일 열기" },
+				message: t("보관된 {0} [[{1}]]을(를) 가리키는 활성 Task입니다.", link.field, link.target),
+				fix: { kind: "open", label: t("파일 열기") },
 			});
 		}
 	}
@@ -216,8 +232,8 @@ function checkHome(
 				{
 					...base,
 					rule: "home",
-					message: `${label}의 거처는 ${home}입니다. 지금은 ${facts.folder || "vault 루트"}에 있습니다.`,
-					fix: { kind: "move", label: `${home}(으)로 이동`, folder: home },
+					message: t("{0}의 거처는 {1}입니다. 지금은 {2}에 있습니다.", label, home, facts.folder || t("vault 루트")),
+					fix: { kind: "move", label: t("{0}(으)로 이동", home), folder: home },
 				},
 			];
 		}
@@ -233,8 +249,8 @@ function checkHome(
 				{
 					...base,
 					rule: "home",
-					message: `${label} 허브는 같은 이름의 컨테이너 폴더 안에 있어야 합니다.`,
-					fix: { kind: "move", label: `${expected}(으)로 이동`, folder: expected },
+					message: t("{0} 허브는 같은 이름의 컨테이너 폴더 안에 있어야 합니다.", label),
+					fix: { kind: "move", label: t("{0}(으)로 이동", expected), folder: expected },
 				},
 			];
 		}
@@ -244,8 +260,8 @@ function checkHome(
 				{
 					...base,
 					rule: "home",
-					message: `${label} 컨테이너는 ${root} 바로 아래에 있어야 합니다. 지금은 ${facts.folder}입니다.`,
-					fix: { kind: "move", label: `${expected}(으)로 이동`, folder: expected },
+					message: t("{0} 컨테이너는 {1} 바로 아래에 있어야 합니다. 지금은 {2}입니다.", label, root, facts.folder),
+					fix: { kind: "move", label: t("{0}(으)로 이동", expected), folder: expected },
 				},
 			];
 		}
@@ -258,8 +274,12 @@ function checkHome(
 			{
 				...base,
 				rule: "home",
-				message: `${label}은(는) 프로젝트나 영역 컨테이너 안에 있어야 합니다. 지금은 ${facts.folder || "vault 루트"}에 있습니다.`,
-				fix: { kind: "open", label: "파일 열기" },
+				message: t(
+					"{0}은(는) 프로젝트나 영역 컨테이너 안에 있어야 합니다. 지금은 {1}에 있습니다.",
+					label,
+					facts.folder || t("vault 루트")
+				),
+				fix: { kind: "open", label: t("파일 열기") },
 			},
 		];
 	}
@@ -276,8 +296,8 @@ export function checkFolder(facts: FolderFacts, _settings: SaintFlowSettings): V
 		out.push({
 			...base,
 			rule: "hub-name",
-			message: `컨테이너에 같은 이름의 허브 노트(${facts.name}.md)가 없습니다.`,
-			fix: { kind: "none", label: "허브를 만들어야 합니다" },
+			message: t("컨테이너에 같은 이름의 허브 노트({0}.md)가 없습니다.", facts.name),
+			fix: { kind: "none", label: t("허브를 만들어야 합니다") },
 		});
 	}
 
@@ -285,8 +305,8 @@ export function checkFolder(facts: FolderFacts, _settings: SaintFlowSettings): V
 		out.push({
 			...base,
 			rule: "folder-depth",
-			message: `컨테이너 안의 하위 폴더는 _files만 허용합니다: ${facts.subfolders.join(", ")}`,
-			fix: { kind: "none", label: "보고만 합니다" },
+			message: t("컨테이너 안의 하위 폴더는 _files만 허용합니다: {0}", facts.subfolders.join(", ")),
+			fix: { kind: "none", label: t("보고만 합니다") },
 		});
 	}
 

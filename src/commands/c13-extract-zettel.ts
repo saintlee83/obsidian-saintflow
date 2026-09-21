@@ -8,6 +8,7 @@ import { createTypedNote, inheritedRelations } from "../relations";
 import { SECTION, findSection } from "../sections";
 import { confirm, promptRequired } from "../ui/modals";
 import { frontMatterOf, typeOf } from "../vault-io";
+import { t } from "../i18n";
 
 /** 체크리스트 항목의 문구. 항목이 아니면 null입니다. */
 export function parseChecklistItem(line: string): { indent: string; text: string } | null {
@@ -39,23 +40,23 @@ export async function extractZettelCommand(
 	const rawLine = editor.getLine(cursor.line);
 	const item = parseChecklistItem(rawLine);
 	if (!item) {
-		new Notice("체크리스트 항목에 커서를 두고 실행하세요.");
+		new Notice(t("체크리스트 항목에 커서를 두고 실행하세요."));
 		return;
 	}
 	if (item.text === "") {
-		new Notice("항목이 비어 있습니다.");
+		new Notice(t("항목이 비어 있습니다."));
 		return;
 	}
 
 	const title = await promptRequired(
 		core.app,
 		{
-			title: "Zettel 제목",
-			description: "주장 문장으로 씁니다. 항목 문구가 후보로 들어가 있습니다.",
+			title: t("Zettel 제목"),
+			description: t("주장 문장으로 씁니다. 항목 문구가 후보로 들어가 있습니다."),
 			value: item.text,
-			cta: "만들기",
+			cta: t("만들기"),
 		},
-		"제목이 비어 있어 만들지 않았습니다."
+		t("제목이 비어 있어 만들지 않았습니다.")
 	);
 	if (!title) return;
 
@@ -65,9 +66,9 @@ export async function extractZettelCommand(
 	if (Object.keys(inherited).length > 0) {
 		const keys = Object.keys(inherited).join(", ");
 		const take = await confirm(core.app, {
-			title: "속성 상속",
-			message: `Source의 ${keys}을(를) 새 Zettel에도 넣을까요?`,
-			cta: "상속",
+			title: t("속성 상속"),
+			message: t("Source의 {0}을(를) 새 Zettel에도 넣을까요?", keys),
+			cta: t("상속"),
 		});
 		if (take) relations = inherited;
 	}
@@ -90,5 +91,5 @@ export async function extractZettelCommand(
 
 	core.index.invalidate();
 	await core.app.workspace.getLeaf(false).openFile(zettel);
-	new Notice(`추출: ${zettel.basename}`);
+	new Notice(t("추출: {0}", zettel.basename));
 }

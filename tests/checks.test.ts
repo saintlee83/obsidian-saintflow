@@ -13,6 +13,10 @@ import {
 	nextReview,
 	recallLogLine,
 } from "../src/checks";
+import { setLocale } from "../src/i18n";
+
+// 이 테스트는 원문(한국어) 문구를 그대로 검사합니다.
+setLocale("ko");
 
 describe("intervalForBox (설계안 2.3)", () => {
 	it("box 1~5는 1, 3, 7, 14, 30일", () => {

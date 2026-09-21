@@ -2,7 +2,15 @@
 // C15 규칙 검사(값 범위, 필수 속성)와 C19 마이그레이션이 이 표 하나를 기준으로 삼습니다.
 // obsidian을 import하지 않는 순수 모듈입니다.
 
-import { AREA_STATUS, OUTPUT_STATUS, PROJECT_STATUS, SaintType, TASK_STATUS, ZETTEL_STATUS } from "./model";
+import {
+	AREA_STATUS_VALUES,
+	OUTPUT_STATUS_VALUES,
+	PROJECT_STATUS_VALUES,
+	SaintType,
+	TASK_STATUS_VALUES,
+	ZETTEL_STATUS_VALUES,
+} from "./model";
+import { t } from "./i18n";
 
 /** 스키마가 바뀌면 올립니다. 저장된 값보다 크면 C19 안내가 뜹니다. */
 export const SCHEMA_VERSION = 1;
@@ -36,15 +44,13 @@ export interface EntitySchema {
 	fields: FieldSpec[];
 }
 
-const enumKeys = (table: Record<string, string>): string[] => Object.keys(table);
-
 export const SCHEMAS: Record<SaintType, EntitySchema> = {
 	task: {
 		type: "task",
 		label: "Task",
 		fields: [
 			{ key: "type", kind: "fixed", fixed: "task", required: true },
-			{ key: "status", kind: "enum", values: enumKeys(TASK_STATUS), required: true },
+			{ key: "status", kind: "enum", values: [...TASK_STATUS_VALUES], required: true },
 			{ key: "project", kind: "link" },
 			{ key: "area", kind: "link" },
 			{ key: "scheduled", kind: "date" },
@@ -58,7 +64,7 @@ export const SCHEMAS: Record<SaintType, EntitySchema> = {
 		label: "Project",
 		fields: [
 			{ key: "type", kind: "fixed", fixed: "project", required: true },
-			{ key: "status", kind: "enum", values: enumKeys(PROJECT_STATUS), required: true },
+			{ key: "status", kind: "enum", values: [...PROJECT_STATUS_VALUES], required: true },
 			{ key: "area", kind: "link" },
 			{ key: "outcome", kind: "text", required: true },
 			{ key: "deadline", kind: "date" },
@@ -70,7 +76,7 @@ export const SCHEMAS: Record<SaintType, EntitySchema> = {
 		label: "Area",
 		fields: [
 			{ key: "type", kind: "fixed", fixed: "area", required: true },
-			{ key: "status", kind: "enum", values: enumKeys(AREA_STATUS), required: true },
+			{ key: "status", kind: "enum", values: [...AREA_STATUS_VALUES], required: true },
 			{ key: "standard", kind: "text" },
 			{ key: "review_cycle", kind: "enum", values: ["weekly", "monthly", "quarterly"] },
 		],
@@ -92,7 +98,7 @@ export const SCHEMAS: Record<SaintType, EntitySchema> = {
 		label: "Zettel",
 		fields: [
 			{ key: "type", kind: "fixed", fixed: "zettel", required: true },
-			{ key: "status", kind: "enum", values: enumKeys(ZETTEL_STATUS), required: true },
+			{ key: "status", kind: "enum", values: [...ZETTEL_STATUS_VALUES], required: true },
 			{ key: "sources", kind: "link-list" },
 			{ key: "project", kind: "link-list" },
 			{ key: "area", kind: "link-list" },
@@ -123,7 +129,7 @@ export const SCHEMAS: Record<SaintType, EntitySchema> = {
 		fields: [
 			{ key: "type", kind: "fixed", fixed: "output", required: true },
 			{ key: "project", kind: "link", required: true },
-			{ key: "status", kind: "enum", values: enumKeys(OUTPUT_STATUS), required: true },
+			{ key: "status", kind: "enum", values: [...OUTPUT_STATUS_VALUES], required: true },
 			{ key: "uses", kind: "link-list" },
 			{ key: "shipped", kind: "date" },
 		],
@@ -212,7 +218,7 @@ export function valueProblems(schema: EntitySchema, fm: Record<string, unknown>)
 					problems.push({
 						key: field.key,
 						value,
-						message: `${field.key}는 "${field.fixed}"여야 합니다.`,
+						message: t("{0}는 \"{1}\"여야 합니다.", field.key, field.fixed),
 						allowed: field.fixed ? [field.fixed] : undefined,
 					});
 				}
@@ -222,7 +228,7 @@ export function valueProblems(schema: EntitySchema, fm: Record<string, unknown>)
 					problems.push({
 						key: field.key,
 						value,
-						message: `${field.key} 값 "${String(value)}"은(는) 허용값이 아닙니다.`,
+						message: t("{0} 값 \"{1}\"은(는) 허용값이 아닙니다.", field.key, String(value)),
 						allowed: field.values,
 					});
 				}
@@ -230,7 +236,7 @@ export function valueProblems(schema: EntitySchema, fm: Record<string, unknown>)
 			case "number": {
 				const n = typeof value === "number" ? value : Number(value);
 				if (!Number.isFinite(n)) {
-					problems.push({ key: field.key, value, message: `${field.key}는 숫자여야 합니다.` });
+					problems.push({ key: field.key, value, message: t("{0}는 숫자여야 합니다.", field.key) });
 				} else if (
 					(field.min !== undefined && n < field.min) ||
 					(field.max !== undefined && n > field.max)
@@ -238,7 +244,7 @@ export function valueProblems(schema: EntitySchema, fm: Record<string, unknown>)
 					problems.push({
 						key: field.key,
 						value,
-						message: `${field.key}는 ${field.min}~${field.max} 범위여야 합니다. 지금은 ${n}입니다.`,
+						message: t("{0}는 {1}~{2} 범위여야 합니다. 지금은 {3}입니다.", field.key, field.min, field.max, n),
 						allowed: rangeValues(field),
 					});
 				}
@@ -249,19 +255,19 @@ export function valueProblems(schema: EntitySchema, fm: Record<string, unknown>)
 					problems.push({
 						key: field.key,
 						value,
-						message: `${field.key}는 true 또는 false여야 합니다.`,
+						message: t("{0}는 true 또는 false여야 합니다.", field.key),
 						allowed: ["true", "false"],
 					});
 				}
 				break;
 			case "date":
 				if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}/.test(value.trim())) {
-					problems.push({ key: field.key, value, message: `${field.key}는 YYYY-MM-DD여야 합니다.` });
+					problems.push({ key: field.key, value, message: t("{0}는 YYYY-MM-DD여야 합니다.", field.key) });
 				}
 				break;
 			case "link":
 				if (Array.isArray(value)) {
-					problems.push({ key: field.key, value, message: `${field.key}는 링크 하나만 받습니다.` });
+					problems.push({ key: field.key, value, message: t("{0}는 링크 하나만 받습니다.", field.key) });
 				}
 				break;
 			case "link-list":

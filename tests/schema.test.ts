@@ -9,6 +9,10 @@ import {
 	schemaFor,
 	valueProblems,
 } from "../src/schema";
+import { setLocale } from "../src/i18n";
+
+// 이 테스트는 원문(한국어) 문구를 그대로 검사합니다.
+setLocale("ko");
 
 describe("schemaFor", () => {
 	it("설계안 2.2의 유형을 모두 덮습니다", () => {

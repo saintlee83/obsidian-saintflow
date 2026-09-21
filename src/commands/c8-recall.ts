@@ -12,6 +12,7 @@ import { SECTION, appendToSection, findSection, firstRecallQuestion } from "../s
 import { templateContent } from "../templates";
 import { pickFile, pickOne, promptRequired, promptText } from "../ui/modals";
 import { createNote, fileByBaseName, readBody, setFrontMatter, typeOf, updateBody } from "../vault-io";
+import { allTranslations, t } from "../i18n";
 
 /** C8-a 세션: 오늘 복습할 Zettel마다 질문과 답안 칸을 만듭니다. */
 export async function recallSessionCommand(core: SaintFlowCore): Promise<TFile | null> {
@@ -22,12 +23,12 @@ export async function recallSessionCommand(core: SaintFlowCore): Promise<TFile |
 	const existing = fileByBaseName(core.app, name);
 	if (existing) {
 		await core.app.workspace.getLeaf(false).openFile(existing);
-		new Notice(`오늘 세션이 이미 있습니다. 복습 대상 ${due.length}건.`);
+		new Notice(t("오늘 세션이 이미 있습니다. 복습 대상 {0}건.", due.length));
 		return existing;
 	}
 
 	if (due.length === 0) {
-		new Notice("오늘 복습할 Zettel이 없습니다.");
+		new Notice(t("오늘 복습할 Zettel이 없습니다."));
 		return null;
 	}
 
@@ -41,11 +42,11 @@ export async function recallSessionCommand(core: SaintFlowCore): Promise<TFile |
 		blocks.push(
 			[
 				`## ${toLink(zettel.basename)}`,
-				`질문: ${question}`,
+				t("질문: {0}", question),
 				"",
-				"답안:",
+				t("답안:"),
 				"",
-				"판정:",
+				t("판정:"),
 				"",
 			].join("\n")
 		);
@@ -59,7 +60,7 @@ export async function recallSessionCommand(core: SaintFlowCore): Promise<TFile |
 	core.index.invalidate();
 
 	await core.app.workspace.getLeaf(false).openFile(file);
-	new Notice(`회상 세션 ${name}: ${due.length}건`);
+	new Notice(t("회상 세션 {0}: {1}건", name, due.length));
 	return file;
 }
 
@@ -79,10 +80,10 @@ export async function gradeRecallCommand(core: SaintFlowCore, target?: TFile): P
 	const result = await pickOne<RecallResult>(
 		core.app,
 		[
-			{ value: "pass", label: "pass", description: "핵심 주장, 근거, 적용 사례 또는 반례를 모두 썼습니다." },
-			{ value: "fail", label: "fail", description: "하나라도 빠졌습니다. box가 1로 돌아갑니다." },
+			{ value: "pass", label: "pass", description: t("핵심 주장, 근거, 적용 사례 또는 반례를 모두 썼습니다.") },
+			{ value: "fail", label: "fail", description: t("하나라도 빠졌습니다. box가 1로 돌아갑니다.") },
 		],
-		`${zettel.basename} 판정`
+		t("{0} 판정", zettel.basename)
 	);
 	if (!result) return;
 
@@ -90,16 +91,16 @@ export async function gradeRecallCommand(core: SaintFlowCore, target?: TFile): P
 	if (result === "fail") {
 		const required = await promptRequired(
 			core.app,
-			{ title: "틀린 점", description: "무엇이 빠졌는지 한 줄로 씁니다.", cta: "저장" },
-			"틀린 점을 적어야 fail을 기록합니다."
+			{ title: t("틀린 점"), description: t("무엇이 빠졌는지 한 줄로 씁니다."), cta: t("저장") },
+			t("틀린 점을 적어야 fail을 기록합니다.")
 		);
 		if (!required) return;
 		note = required;
 	} else {
 		const optional = await promptText(core.app, {
-			title: "남길 말 (선택)",
-			description: "비워 두어도 됩니다.",
-			cta: "저장",
+			title: t("남길 말 (선택)"),
+			description: t("비워 두어도 됩니다."),
+			cta: t("저장"),
 		});
 		if (optional === null) return;
 		note = optional.trim();
@@ -121,7 +122,7 @@ export async function gradeRecallCommand(core: SaintFlowCore, target?: TFile): P
 	core.index.invalidate();
 
 	const due = nextReview({ box: newBox, last_reviewed: today }, today, core.settings.recallIntervals);
-	new Notice(`${result} · box ${newBox} · 다음 복습 ${due}`);
+	new Notice(t("{0} · box {1} · 다음 복습 {2}", result, newBox, due));
 }
 
 async function resolveZettel(core: SaintFlowCore, target?: TFile): Promise<TFile | null> {
@@ -137,17 +138,17 @@ async function resolveZettel(core: SaintFlowCore, target?: TFile): Promise<TFile
 		const files = names
 			.map((n) => fileByBaseName(core.app, n))
 			.filter((f): f is TFile => !!f && typeOf(core.app, f) === "zettel");
-		if (files.length > 0) return await pickFile(core.app, files, "채점할 Zettel");
+		if (files.length > 0) return await pickFile(core.app, files, t("채점할 Zettel"));
 	}
 
 	const recalls = core.index
 		.allOfType("zettel")
 		.filter((f) => (core.app.metadataCache.getFileCache(f)?.frontmatter?.recall as boolean) === true);
 	if (recalls.length === 0) {
-		new Notice("recall: true인 Zettel이 없습니다.");
+		new Notice(t("recall: true인 Zettel이 없습니다."));
 		return null;
 	}
-	return await pickFile(core.app, recalls, "채점할 Zettel");
+	return await pickFile(core.app, recalls, t("채점할 Zettel"));
 }
 
 /** 오늘 세션 노트의 빈 `판정:` 줄만 채웁니다. 사용자가 쓴 답안은 건드리지 않습니다. */
@@ -164,11 +165,13 @@ async function fillSessionVerdict(
 		const range = findSection(body, `[[${zettelName}]]`);
 		if (!range) return body;
 		const lines = body.split("\n");
+		// 세션을 만든 뒤에 언어를 바꿨을 수 있으므로 판정 줄은 모든 번역으로 찾습니다.
+		const labels = allTranslations("판정:");
 		for (let i = range.start; i < range.end; i++) {
-			const m = /^판정:\s*(.*)$/.exec(lines[i]);
-			if (!m) continue;
-			if (m[1].trim() !== "") return body;
-			lines[i] = `판정: ${verdict}`;
+			const label = labels.find((l) => lines[i].startsWith(l));
+			if (!label) continue;
+			if (lines[i].slice(label.length).trim() !== "") return body;
+			lines[i] = t("판정: {0}", verdict);
 			return lines.join("\n");
 		}
 		return body;

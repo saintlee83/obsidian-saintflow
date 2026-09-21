@@ -4,34 +4,35 @@
 import { Notice, TFile } from "obsidian";
 import type { SaintFlowCore } from "../core";
 import { toLink } from "../links";
-import { AREA_STATUS } from "../model";
+import { areaStatusOptions } from "../model";
 import { createTypedNote, homeFolderFor } from "../relations";
 import { confirm, file as pickedFile, openForm, promptRequired, str } from "../ui/modals";
+import { t } from "../i18n";
 
 export async function newProjectCommand(core: SaintFlowCore): Promise<TFile | null> {
 	const areas = core.index.allOfType("area");
 	const values = await openForm(core.app, {
-		title: "새 프로젝트",
-		description: "완료 조건은 판정 가능한 한 문장이어야 합니다. 비면 만들지 않습니다.",
+		title: t("새 프로젝트"),
+		description: t("완료 조건은 판정 가능한 한 문장이어야 합니다. 비면 만들지 않습니다."),
 		fields: [
-			{ kind: "text", key: "title", label: "이름", required: true, placeholder: "기술비교보고서" },
+			{ kind: "text", key: "title", label: t("이름"), required: true, placeholder: t("기술비교보고서") },
 			{
 				kind: "textarea",
 				key: "outcome",
-				label: "완료 조건",
+				label: t("완료 조건"),
 				required: true,
-				placeholder: "무엇이 있으면 끝난 것인가?",
+				placeholder: t("무엇이 있으면 끝난 것인가?"),
 			},
 			{ kind: "link", key: "area", label: "area", files: areas },
 			{ kind: "text", key: "deadline", label: "deadline", placeholder: "YYYY-MM-DD" },
-			{ kind: "text", key: "repo", label: "repo", placeholder: "저장소 URL 또는 로컬 경로" },
+			{ kind: "text", key: "repo", label: "repo", placeholder: t("저장소 URL 또는 로컬 경로") },
 		],
 	});
 	if (!values) return null;
 
 	const outcome = str(values, "outcome");
 	if (!outcome) {
-		new Notice("완료 조건이 비어 있어 만들지 않았습니다.");
+		new Notice(t("완료 조건이 비어 있어 만들지 않았습니다."));
 		return null;
 	}
 	const area = pickedFile(values, "area");
@@ -55,17 +56,17 @@ export async function newProjectCommand(core: SaintFlowCore): Promise<TFile | nu
 
 export async function newAreaCommand(core: SaintFlowCore): Promise<TFile | null> {
 	const values = await openForm(core.app, {
-		title: "새 영역",
-		description: "영역은 유지 기준이 있는 책임입니다. 끝나는 날짜가 있으면 프로젝트입니다.",
+		title: t("새 영역"),
+		description: t("영역은 유지 기준이 있는 책임입니다. 끝나는 날짜가 있으면 프로젝트입니다."),
 		fields: [
-			{ kind: "text", key: "title", label: "이름", required: true, placeholder: "학업" },
-			{ kind: "textarea", key: "standard", label: "유지 기준", required: true },
-			{ kind: "dropdown", key: "status", label: "status", options: AREA_STATUS, value: "active" },
+			{ kind: "text", key: "title", label: t("이름"), required: true, placeholder: t("학업") },
+			{ kind: "textarea", key: "standard", label: t("유지 기준"), required: true },
+			{ kind: "dropdown", key: "status", label: "status", options: areaStatusOptions(), value: "active" },
 			{
 				kind: "dropdown",
 				key: "review_cycle",
 				label: "review_cycle",
-				options: { "": "(없음)", weekly: "weekly", monthly: "monthly", quarterly: "quarterly" },
+				options: { "": t("(없음)"), weekly: "weekly", monthly: "monthly", quarterly: "quarterly" },
 				value: "",
 			},
 		],
@@ -89,22 +90,22 @@ export async function newAreaCommand(core: SaintFlowCore): Promise<TFile | null>
 /** 규칙 2: 진행 중인 프로젝트는 다음 행동을 가집니다. 없으면 멈춘 프로젝트로 표시됩니다. */
 async function promptFirstNextAction(core: SaintFlowCore, hub: TFile): Promise<void> {
 	const wants = await confirm(core.app, {
-		title: "첫 다음 행동",
+		title: t("첫 다음 행동"),
 		message:
-			"다음 행동이 없으면 멈춘 프로젝트로 표시됩니다. 지금 하나 정할까요?\n정할 수 없다면 그것을 정하기 위해 확인할 질문을 Task로 두세요.",
-		cta: "정하기",
+			t("다음 행동이 없으면 멈춘 프로젝트로 표시됩니다. 지금 하나 정할까요?\n정할 수 없다면 그것을 정하기 위해 확인할 질문을 Task로 두세요."),
+		cta: t("정하기"),
 	});
 	if (!wants) return;
 
 	const title = await promptRequired(
 		core.app,
 		{
-			title: "다음 행동",
-			description: "동사로 끝나는 행동 하나를 씁니다.",
-			placeholder: "후보 기술 A 평가 조건 정리하기",
-			cta: "만들기",
+			title: t("다음 행동"),
+			description: t("동사로 끝나는 행동 하나를 씁니다."),
+			placeholder: t("후보 기술 A 평가 조건 정리하기"),
+			cta: t("만들기"),
 		},
-		"행동이 비어 있습니다."
+		t("행동이 비어 있습니다.")
 	);
 	if (!title) return;
 
@@ -113,5 +114,5 @@ async function promptFirstNextAction(core: SaintFlowCore, hub: TFile): Promise<v
 		folder: homeFolderFor(core.settings, "task"),
 		overrides: { status: "next", project: toLink(hub.basename) },
 	});
-	if (task) new Notice(`다음 행동: ${task.basename}`);
+	if (task) new Notice(t("다음 행동: {0}", task.basename));
 }

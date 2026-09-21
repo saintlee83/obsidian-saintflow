@@ -20,6 +20,7 @@ import {
 	setFrontMatter,
 	typeOf,
 } from "../vault-io";
+import { t } from "../i18n";
 
 type HarvestChoice = "zettel" | "source" | "keep";
 type TaskChoice = "done" | "someday" | "keep";
@@ -27,24 +28,24 @@ type TaskChoice = "done" | "someday" | "keep";
 export async function projectCloseCommand(core: SaintFlowCore, target?: TFile): Promise<void> {
 	const hub = target ?? core.app.workspace.getActiveFile();
 	if (!hub || typeOf(core.app, hub) !== "project") {
-		new Notice("프로젝트 허브에서 실행하세요.");
+		new Notice(t("프로젝트 허브에서 실행하세요."));
 		return;
 	}
 	const container = containerFolderOf(core.app, hub);
 	if (!container) {
-		new Notice(`${hub.basename}이(가) 같은 이름의 컨테이너 폴더 안에 있지 않습니다.`);
+		new Notice(t("{0}이(가) 같은 이름의 컨테이너 폴더 안에 있지 않습니다.", hub.basename));
 		return;
 	}
 
 	// 1. 완료 조건 판정
 	const outcome = frontMatterOf(core.app, hub).outcome;
 	const met = await confirm(core.app, {
-		title: "완료 조건 판정",
-		message: `${typeof outcome === "string" && outcome ? outcome : "(완료 조건이 비어 있습니다)"}\n\n충족했습니까?`,
-		cta: "충족",
+		title: t("완료 조건 판정"),
+		message: t("{0}\n\n충족했습니까?", typeof outcome === "string" && outcome ? outcome : t("(완료 조건이 비어 있습니다)")),
+		cta: t("충족"),
 	});
 	if (!met) {
-		new Notice("종료하지 않았습니다. 완료 조건을 다시 보거나 status를 on-hold로 두세요.");
+		new Notice(t("종료하지 않았습니다. 완료 조건을 다시 보거나 status를 on-hold로 두세요."));
 		return;
 	}
 
@@ -54,9 +55,12 @@ export async function projectCloseCommand(core: SaintFlowCore, target?: TFile): 
 	const missing = outputs.filter((f) => isOutputWithoutUses(frontMatterOf(core.app, f).uses));
 	if (missing.length > 0) {
 		const proceed = await confirm(core.app, {
-			title: "uses가 빈 결과물이 있습니다",
-			message: `${missing.map((f) => f.basename).join(", ")}\n\n사용한 지식 링크는 Transform의 완료 증거입니다. 그래도 계속할까요?`,
-			cta: "계속",
+			title: t("uses가 빈 결과물이 있습니다"),
+			message: t(
+				"{0}\n\n사용한 지식 링크는 Transform의 완료 증거입니다. 그래도 계속할까요?",
+				missing.map((f) => f.basename).join(", ")
+			),
+			cta: t("계속"),
 			warning: true,
 		});
 		if (!proceed) return;
@@ -69,11 +73,11 @@ export async function projectCloseCommand(core: SaintFlowCore, target?: TFile): 
 		const choice = await pickOne<HarvestChoice>(
 			core.app,
 			[
-				{ value: "keep", label: "보관", description: "컨테이너와 함께 Archive로 갑니다." },
-				{ value: "zettel", label: "Zettel로 승격", description: "2_Internalize로 옮기고 seed로 둡니다." },
-				{ value: "source", label: "Source로 승격", description: "1_Arrange/Resources로 옮깁니다." },
+				{ value: "keep", label: t("보관"), description: t("컨테이너와 함께 Archive로 갑니다.") },
+				{ value: "zettel", label: t("Zettel로 승격"), description: t("2_Internalize로 옮기고 seed로 둡니다.") },
+				{ value: "source", label: t("Source로 승격"), description: t("1_Arrange/Resources로 옮깁니다.") },
 			],
-			`${working.basename} 처리`
+			t("{0} 처리", working.basename)
 		);
 		if (!choice) return;
 		if (choice === "keep") continue;
@@ -89,11 +93,11 @@ export async function projectCloseCommand(core: SaintFlowCore, target?: TFile): 
 		const choice = await pickOne<TaskChoice>(
 			core.app,
 			[
-				{ value: "done", label: "완료", description: "status: done, completed 기록" },
-				{ value: "someday", label: "언젠가", description: "status: someday" },
-				{ value: "keep", label: "그대로", description: "상태를 바꾸지 않습니다." },
+				{ value: "done", label: t("완료"), description: t("status: done, completed 기록") },
+				{ value: "someday", label: t("언젠가"), description: "status: someday" },
+				{ value: "keep", label: t("그대로"), description: t("상태를 바꾸지 않습니다.") },
 			],
-			`${task.basename} 처리`
+			t("{0} 처리", task.basename)
 		);
 		if (!choice) return;
 		if (choice === "keep") continue;
@@ -106,9 +110,9 @@ export async function projectCloseCommand(core: SaintFlowCore, target?: TFile): 
 	// 5. 종료 검토 노트. 회고는 선택입니다. 여기까지 왔으면 Task를 이미 바꿨으므로 되돌리지 않습니다.
 	const reflection = (
 		await promptText(core.app, {
-			title: "종료 검토",
-			description: "다음에 다시 할 때 달라질 점을 한 줄로 씁니다. 비워 두고 나중에 써도 됩니다.",
-			cta: "만들기",
+			title: t("종료 검토"),
+			description: t("다음에 다시 할 때 달라질 점을 한 줄로 씁니다. 비워 두고 나중에 써도 됩니다."),
+			cta: t("만들기"),
 			multiline: true,
 		})
 	)?.trim();
@@ -129,8 +133,8 @@ export async function projectCloseCommand(core: SaintFlowCore, target?: TFile): 
 	await archiveContainer(core, container);
 	core.index.invalidate();
 
-	const parts = [`${hub.basename} 종료`];
-	if (promoted.length > 0) parts.push(`승격 ${promoted.length}건`);
+	const parts = [t("{0} 종료", hub.basename)];
+	if (promoted.length > 0) parts.push(t("승격 {0}건", promoted.length));
 	if (review) parts.push(review.basename);
 	new Notice(parts.join(" · "));
 }
@@ -145,21 +149,21 @@ async function promote(
 	const title = await promptRequired(
 		core.app,
 		{
-			title: to === "zettel" ? "Zettel 제목" : "Source 제목",
+			title: to === "zettel" ? t("Zettel 제목") : t("Source 제목"),
 			description:
 				to === "zettel"
-					? "주장 문장으로 씁니다. 접두사는 붙이지 않습니다."
-					: "원제목을 씁니다. S- 접두사는 자동으로 붙습니다.",
+					? t("주장 문장으로 씁니다. 접두사는 붙이지 않습니다.")
+					: t("원제목을 씁니다. S- 접두사는 자동으로 붙습니다."),
 			value: stripPrefix(core.settings.prefixes.working, working.basename),
-			cta: "승격",
+			cta: t("승격"),
 		},
-		"제목이 비어 있어 승격하지 않았습니다."
+		t("제목이 비어 있어 승격하지 않았습니다.")
 	);
 	if (!title) return null;
 
 	const name = fileNameFor(core.settings, to, title);
 	if (!name) {
-		new Notice("파일명 규칙을 적용하면 이름이 비어 있습니다.");
+		new Notice(t("파일명 규칙을 적용하면 이름이 비어 있습니다."));
 		return null;
 	}
 

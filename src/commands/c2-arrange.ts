@@ -6,17 +6,18 @@ import type { SaintFlowCore } from "../core";
 import { toLink } from "../links";
 import {
 	ARRANGE_TYPES,
-	AREA_STATUS,
+	areaStatusOptions,
 	CreatableType,
-	TASK_STATUS,
+	taskStatusOptions,
 	TYPE_DEFAULTS,
-	TYPE_LABEL,
+	typeLabel,
 } from "../model";
 import { fileNameFor, homeFolderFor } from "../relations";
 import { splitFrontMatter } from "../sections";
 import { templateParts } from "../templates";
 import { confirm, file as pickedFile, openForm, pickOne, str } from "../ui/modals";
 import { frontMatterOf, isArchived, moveNote, setFrontMatter, uniqueBaseName } from "../vault-io";
+import { t } from "../i18n";
 
 type ArrangeChoice = CreatableType | "delete";
 
@@ -29,36 +30,36 @@ export interface ArrangeResult {
 export async function arrangeCommand(core: SaintFlowCore, target?: TFile): Promise<void> {
 	const file = target ?? core.app.workspace.getActiveFile();
 	if (!file) {
-		new Notice("분류할 파일을 먼저 여세요.");
+		new Notice(t("분류할 파일을 먼저 여세요."));
 		return;
 	}
 	const sweep = core.settings.folders.sweep;
 	if (!(file.path === sweep || file.path.startsWith(sweep + "/"))) {
-		new Notice(`${sweep}에 있는 파일만 분류합니다.`);
+		new Notice(t("{0}에 있는 파일만 분류합니다.", sweep));
 		return;
 	}
 
 	const choice = await pickOne<ArrangeChoice>(
 		core.app,
 		[
-			...ARRANGE_TYPES.map((t) => ({ value: t as ArrangeChoice, label: TYPE_LABEL[t] })),
-			{ value: "delete" as ArrangeChoice, label: "삭제 (휴지통)" },
+			...ARRANGE_TYPES.map((type) => ({ value: type as ArrangeChoice, label: typeLabel(type) })),
+			{ value: "delete" as ArrangeChoice, label: t("삭제 (휴지통)") },
 		],
-		"무엇으로 분류할까요?"
+		t("무엇으로 분류할까요?")
 	);
 	if (!choice) return;
 
 	if (choice === "delete") {
 		const ok = await confirm(core.app, {
-			title: "삭제",
-			message: `${file.basename}을(를) 휴지통으로 보냅니다.`,
-			cta: "휴지통으로",
+			title: t("삭제"),
+			message: t("{0}을(를) 휴지통으로 보냅니다.", file.basename),
+			cta: t("휴지통으로"),
 			warning: true,
 		});
 		if (!ok) return;
 		await core.app.fileManager.trashFile(file);
 		core.index.invalidate();
-		new Notice("휴지통으로 보냈습니다.");
+		new Notice(t("휴지통으로 보냈습니다."));
 		return;
 	}
 
@@ -66,7 +67,7 @@ export async function arrangeCommand(core: SaintFlowCore, target?: TFile): Promi
 	if (!result) return;
 
 	const ok = await applyArrange(core, file, choice, result);
-	if (ok) new Notice(`${TYPE_LABEL[choice]} → ${file.path}`);
+	if (ok) new Notice(`${typeLabel(choice)} → ${file.path}`);
 }
 
 /**
@@ -81,7 +82,7 @@ export async function applyArrange(
 ): Promise<boolean> {
 	const desired = fileNameFor(core.settings, type, result.title);
 	if (!desired) {
-		new Notice("파일명 규칙을 적용하면 이름이 비어 있습니다.");
+		new Notice(t("파일명 규칙을 적용하면 이름이 비어 있습니다."));
 		return false;
 	}
 	// 허브 이름은 컨테이너 폴더 이름과 같아야 하므로(규칙 3) 번호를 먼저 확정합니다.
@@ -111,15 +112,15 @@ export async function collectInput(
 	switch (type) {
 		case "task": {
 			const values = await openForm(core.app, {
-				title: "Task로 분류",
-				description: "제목은 동사로 끝나는 행동 하나여야 합니다.",
+				title: t("Task로 분류"),
+				description: t("제목은 동사로 끝나는 행동 하나여야 합니다."),
 				fields: [
-					{ kind: "text", key: "title", label: "제목", required: true, value: defaultTitle },
-					{ kind: "dropdown", key: "status", label: "status", options: TASK_STATUS, value: "next" },
+					{ kind: "text", key: "title", label: t("제목"), required: true, value: defaultTitle },
+					{ kind: "dropdown", key: "status", label: "status", options: taskStatusOptions(), value: "next" },
 					{ kind: "link", key: "project", label: "project", files: projects },
 					{ kind: "link", key: "area", label: "area", files: areas },
 				],
-				cta: "분류",
+				cta: t("분류"),
 			});
 			if (!values) return null;
 			const project = pickedFile(values, "project");
@@ -136,16 +137,16 @@ export async function collectInput(
 		}
 		case "project": {
 			const values = await openForm(core.app, {
-				title: "Project로 분류",
-				description: "완료 조건은 판정 가능한 한 문장이어야 합니다.",
+				title: t("Project로 분류"),
+				description: t("완료 조건은 판정 가능한 한 문장이어야 합니다."),
 				fields: [
-					{ kind: "text", key: "title", label: "이름", required: true, value: defaultTitle },
-					{ kind: "textarea", key: "outcome", label: "완료 조건", required: true },
+					{ kind: "text", key: "title", label: t("이름"), required: true, value: defaultTitle },
+					{ kind: "textarea", key: "outcome", label: t("완료 조건"), required: true },
 					{ kind: "link", key: "area", label: "area", files: areas },
 					{ kind: "text", key: "deadline", label: "deadline", placeholder: "YYYY-MM-DD" },
-					{ kind: "text", key: "repo", label: "repo", placeholder: "저장소 URL 또는 로컬 경로" },
+					{ kind: "text", key: "repo", label: "repo", placeholder: t("저장소 URL 또는 로컬 경로") },
 				],
-				cta: "분류",
+				cta: t("분류"),
 			});
 			if (!values) return null;
 			const area = pickedFile(values, "area");
@@ -163,20 +164,20 @@ export async function collectInput(
 		}
 		case "area": {
 			const values = await openForm(core.app, {
-				title: "Area로 분류",
+				title: t("Area로 분류"),
 				fields: [
-					{ kind: "text", key: "title", label: "이름", required: true, value: defaultTitle },
-					{ kind: "textarea", key: "standard", label: "유지 기준", required: true },
-					{ kind: "dropdown", key: "status", label: "status", options: AREA_STATUS, value: "active" },
+					{ kind: "text", key: "title", label: t("이름"), required: true, value: defaultTitle },
+					{ kind: "textarea", key: "standard", label: t("유지 기준"), required: true },
+					{ kind: "dropdown", key: "status", label: "status", options: areaStatusOptions(), value: "active" },
 					{
 						kind: "dropdown",
 						key: "review_cycle",
 						label: "review_cycle",
-						options: { "": "(없음)", weekly: "weekly", monthly: "monthly", quarterly: "quarterly" },
+						options: { "": t("(없음)"), weekly: "weekly", monthly: "monthly", quarterly: "quarterly" },
 						value: "",
 					},
 				],
-				cta: "분류",
+				cta: t("분류"),
 			});
 			if (!values) return null;
 			return {
@@ -191,16 +192,16 @@ export async function collectInput(
 		}
 		case "source": {
 			const values = await openForm(core.app, {
-				title: "Source로 분류",
+				title: t("Source로 분류"),
 				fields: [
-					{ kind: "text", key: "title", label: "원제목", required: true, value: defaultTitle },
+					{ kind: "text", key: "title", label: t("원제목"), required: true, value: defaultTitle },
 					{ kind: "text", key: "author", label: "author" },
 					{ kind: "text", key: "url", label: "url" },
-					{ kind: "text", key: "location", label: "location", placeholder: "쪽, 장, 타임스탬프" },
+					{ kind: "text", key: "location", label: "location", placeholder: t("쪽, 장, 타임스탬프") },
 					{ kind: "link", key: "project", label: "project", files: projects },
 					{ kind: "link", key: "area", label: "area", files: areas },
 				],
-				cta: "분류",
+				cta: t("분류"),
 			});
 			if (!values) return null;
 			const project = pickedFile(values, "project");
@@ -219,14 +220,14 @@ export async function collectInput(
 		}
 		case "zettel": {
 			const values = await openForm(core.app, {
-				title: "Zettel로 분류",
-				description: "제목은 주장 문장으로 씁니다. status는 seed로 시작합니다.",
+				title: t("Zettel로 분류"),
+				description: t("제목은 주장 문장으로 씁니다. status는 seed로 시작합니다."),
 				fields: [
-					{ kind: "text", key: "title", label: "주장 문장", required: true, value: defaultTitle },
+					{ kind: "text", key: "title", label: t("주장 문장"), required: true, value: defaultTitle },
 					{ kind: "link", key: "source", label: "sources", files: core.index.allOfType("source") },
 					{ kind: "link", key: "project", label: "project", files: projects },
 				],
-				cta: "분류",
+				cta: t("분류"),
 			});
 			if (!values) return null;
 			const source = pickedFile(values, "source");
@@ -245,9 +246,9 @@ export async function collectInput(
 		}
 		case "map": {
 			const values = await openForm(core.app, {
-				title: "Map으로 분류",
-				fields: [{ kind: "text", key: "title", label: "주제", required: true, value: defaultTitle }],
-				cta: "분류",
+				title: t("Map으로 분류"),
+				fields: [{ kind: "text", key: "title", label: t("주제"), required: true, value: defaultTitle }],
+				cta: t("분류"),
 			});
 			if (!values) return null;
 			return {

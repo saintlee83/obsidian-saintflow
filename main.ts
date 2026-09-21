@@ -4,7 +4,17 @@
 // 역할 분담(설계안 5.2): Bases가 보기를 맡고, 플러그인은 생성·변경·점검 계산을 맡습니다.
 // Node API를 쓰지 않으므로 모바일에서도 동작합니다.
 
-import { Editor, MarkdownView, Notice, Plugin, TAbstractFile, TFile, TFolder, WorkspaceLeaf } from "obsidian";
+import {
+	Editor,
+	MarkdownView,
+	Notice,
+	Plugin,
+	TAbstractFile,
+	TFile,
+	TFolder,
+	WorkspaceLeaf,
+	moment,
+} from "obsidian";
 import { registerNewBlock } from "./src/blocks/new-block";
 import { captureCommand } from "./src/commands/c1-capture";
 import { arrangeCommand } from "./src/commands/c2-arrange";
@@ -31,6 +41,7 @@ import { isContextParent } from "./src/model";
 import { SaintFlowSettingTab } from "./src/settings";
 import { SAINTFLOW_VIEW, SaintFlowPanel } from "./src/views/panel";
 import { typeOf } from "./src/vault-io";
+import { detectLocale, setLocale, t } from "./src/i18n";
 
 export default class SaintFlowPlugin extends Plugin implements SaintFlowCore {
 	settings!: SaintFlowSettings;
@@ -38,6 +49,10 @@ export default class SaintFlowPlugin extends Plugin implements SaintFlowCore {
 	private decorateTimer = 0;
 
 	async onload(): Promise<void> {
+		// UI 언어는 Obsidian 설정을 따릅니다. 명령 이름과 설정 탭이 만들어지기 전에 정해야 합니다.
+		// 언어를 바꾸면 Obsidian이 다시 로드되므로 여기서 한 번만 정하면 됩니다.
+		setLocale(detectLocale(moment.locale()));
+
 		await this.loadSettings();
 		this.index = new SaintFlowIndex(this.app, () => this.settings);
 
@@ -58,8 +73,8 @@ export default class SaintFlowPlugin extends Plugin implements SaintFlowCore {
 		this.registerMenus();
 
 		// C1은 모바일에서도 한 번에 닿아야 합니다.
-		this.addRibbonIcon("inbox", "SaintFlow: 수집", () => void this.run(() => captureCommand(this)));
-		this.addRibbonIcon("workflow", "SaintFlow: 패널 열기", () => void this.run(() => this.openPanel()));
+		this.addRibbonIcon("inbox", t("SaintFlow: 수집"), () => void this.run(() => captureCommand(this)));
+		this.addRibbonIcon("workflow", t("SaintFlow: 패널 열기"), () => void this.run(() => this.openPanel()));
 
 		this.app.workspace.onLayoutReady(() => {
 			this.scheduleDecorate();
@@ -79,13 +94,13 @@ export default class SaintFlowPlugin extends Plugin implements SaintFlowCore {
 	private registerCommands(): void {
 		this.addCommand({
 			id: "capture",
-			name: "C1 수집",
+			name: t("C1 수집"),
 			callback: () => void this.run(() => captureCommand(this)),
 		});
 
 		this.addCommand({
 			id: "arrange",
-			name: "C2 분류",
+			name: t("C2 분류"),
 			checkCallback: (checking) => {
 				const ok = this.activeIsInSweep();
 				if (checking) return ok;
@@ -96,37 +111,37 @@ export default class SaintFlowPlugin extends Plugin implements SaintFlowCore {
 
 		this.addCommand({
 			id: "create-in-context",
-			name: "C3 맥락 생성",
+			name: t("C3 맥락 생성"),
 			callback: () => void this.run(() => createInContextCommand(this)),
 		});
 
 		this.addCommand({
 			id: "new-project",
-			name: "C4 새 프로젝트",
+			name: t("C4 새 프로젝트"),
 			callback: () => void this.run(() => newProjectCommand(this)),
 		});
 
 		this.addCommand({
 			id: "new-area",
-			name: "C4 새 영역",
+			name: t("C4 새 영역"),
 			callback: () => void this.run(() => newAreaCommand(this)),
 		});
 
 		this.addCommand({
 			id: "set-relation",
-			name: "C5 관계 지정",
+			name: t("C5 관계 지정"),
 			callback: () => void this.run(() => setRelationCommand(this)),
 		});
 
 		this.addCommand({
 			id: "link-zettel",
-			name: "C6 Zettel 연결 추가",
+			name: t("C6 Zettel 연결 추가"),
 			checkCallback: this.activeTypeCheck(["zettel"], () => linkZettelCommand(this)),
 		});
 
 		this.addCommand({
 			id: "set-status",
-			name: "C7 상태 전환",
+			name: t("C7 상태 전환"),
 			checkCallback: this.activeTypeCheck(["task", "project", "zettel", "output"], () =>
 				statusCommand(this)
 			),
@@ -134,31 +149,31 @@ export default class SaintFlowPlugin extends Plugin implements SaintFlowCore {
 
 		this.addCommand({
 			id: "recall-session",
-			name: "C8 회상 세션 시작",
+			name: t("C8 회상 세션 시작"),
 			callback: () => void this.run(() => recallSessionCommand(this)),
 		});
 
 		this.addCommand({
 			id: "grade-recall",
-			name: "C8 회상 채점",
+			name: t("C8 회상 채점"),
 			callback: () => void this.run(() => gradeRecallCommand(this)),
 		});
 
 		this.addCommand({
 			id: "project-close",
-			name: "C9 프로젝트 종료",
+			name: t("C9 프로젝트 종료"),
 			checkCallback: this.activeTypeCheck(["project"], () => projectCloseCommand(this)),
 		});
 
 		this.addCommand({
 			id: "weekly-review",
-			name: "C10 주간 검토",
+			name: t("C10 주간 검토"),
 			callback: () => void this.run(() => weeklyReviewCommand(this)),
 		});
 
 		this.addCommand({
 			id: "inbox",
-			name: "C12 Inbox 처리 모드",
+			name: t("C12 Inbox 처리 모드"),
 			checkCallback: (checking) => {
 				const sweep = this.settings.folders.sweep;
 				const ok = this.app.vault
@@ -172,7 +187,7 @@ export default class SaintFlowPlugin extends Plugin implements SaintFlowCore {
 
 		this.addCommand({
 			id: "extract-zettel",
-			name: "C13 Source에서 Zettel 추출",
+			name: t("C13 Source에서 Zettel 추출"),
 			editorCheckCallback: (checking, editor: Editor, view) => {
 				const file = view instanceof MarkdownView ? view.file : null;
 				const ok = canExtract(this.app, file, editor);
@@ -184,7 +199,7 @@ export default class SaintFlowPlugin extends Plugin implements SaintFlowCore {
 
 		this.addCommand({
 			id: "promote-selection",
-			name: "C14 선택 영역 승격",
+			name: t("C14 선택 영역 승격"),
 			editorCheckCallback: (checking, editor: Editor, view) => {
 				const file = view instanceof MarkdownView ? view.file : null;
 				const ok = canPromoteSelection(this.app, file, editor);
@@ -196,43 +211,43 @@ export default class SaintFlowPlugin extends Plugin implements SaintFlowCore {
 
 		this.addCommand({
 			id: "lint",
-			name: "C15 규칙 검사",
+			name: t("C15 규칙 검사"),
 			callback: () => void this.run(() => lintCommand(this)),
 		});
 
 		this.addCommand({
 			id: "open-panel",
-			name: "C16 SaintFlow 패널 열기",
+			name: t("C16 SaintFlow 패널 열기"),
 			callback: () => void this.run(() => this.openPanel()),
 		});
 
 		this.addCommand({
 			id: "open-home",
-			name: "C17 Home 열기",
+			name: t("C17 Home 열기"),
 			callback: () => void this.run(() => openHomeCommand(this)),
 		});
 
 		this.addCommand({
 			id: "open-hub",
-			name: "C18 허브 열기",
+			name: t("C18 허브 열기"),
 			callback: () => void this.run(() => openHubCommand(this)),
 		});
 
 		this.addCommand({
 			id: "migrate-schema",
-			name: "C19 스키마 마이그레이션",
+			name: t("C19 스키마 마이그레이션"),
 			callback: () => void this.run(() => migrateCommand(this)),
 		});
 
 		this.addCommand({
 			id: "export-report",
-			name: "C20 점검 리포트 내보내기",
+			name: t("C20 점검 리포트 내보내기"),
 			callback: () => void this.run(() => reportCommand(this)),
 		});
 
 		this.addCommand({
 			id: "snapshot-notice",
-			name: "점검 스냅샷 보기",
+			name: t("점검 스냅샷 보기"),
 			callback: () =>
 				void this.run(async () => {
 					const groups = computeSnapshot(this.app, this.settings, this.index);
@@ -264,7 +279,7 @@ export default class SaintFlowPlugin extends Plugin implements SaintFlowCore {
 					if (!isContainerFolder(this, file)) return;
 					menu.addItem((item) =>
 						item
-							.setTitle("SaintFlow: 허브 열기")
+							.setTitle(t("SaintFlow: 허브 열기"))
 							.setIcon("home")
 							.onClick(() => void this.run(() => openHubCommand(this, file)))
 					);
@@ -276,7 +291,7 @@ export default class SaintFlowPlugin extends Plugin implements SaintFlowCore {
 				if (file.path === sweep || file.path.startsWith(sweep + "/")) {
 					menu.addItem((item) =>
 						item
-							.setTitle("SaintFlow: 분류")
+							.setTitle(t("SaintFlow: 분류"))
 							.setIcon("folder-input")
 							.onClick(() => void this.run(() => arrangeCommand(this, file)))
 					);
@@ -284,7 +299,7 @@ export default class SaintFlowPlugin extends Plugin implements SaintFlowCore {
 				if (isContextParent(typeOf(this.app, file))) {
 					menu.addItem((item) =>
 						item
-							.setTitle("SaintFlow: 여기서 만들기")
+							.setTitle(t("SaintFlow: 여기서 만들기"))
 							.setIcon("plus")
 							.onClick(() => void this.run(() => createInContextCommand(this, { parent: file })))
 					);
@@ -350,7 +365,7 @@ export default class SaintFlowPlugin extends Plugin implements SaintFlowCore {
 			await fn();
 		} catch (err) {
 			console.error("[SaintFlow]", err);
-			new Notice(`SaintFlow 오류: ${err instanceof Error ? err.message : String(err)}`, 8000);
+			new Notice(t("SaintFlow 오류: {0}", err instanceof Error ? err.message : String(err)), 8000);
 		}
 	}
 

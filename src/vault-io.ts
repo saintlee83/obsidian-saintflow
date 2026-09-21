@@ -5,6 +5,7 @@
 import { App, TFile, TFolder, normalizePath } from "obsidian";
 import { baseNameOf, folderOf, joinPath, uniqueName } from "./naming";
 import { splitFrontMatter } from "./sections";
+import { t } from "./i18n";
 
 export async function ensureFolder(app: App, path: string): Promise<void> {
 	const clean = normalizePath(path);
@@ -15,7 +16,7 @@ export async function ensureFolder(app: App, path: string): Promise<void> {
 		current = current ? `${current}/${part}` : part;
 		const existing = app.vault.getAbstractFileByPath(current);
 		if (existing instanceof TFolder) continue;
-		if (existing) throw new Error(`폴더를 만들 수 없습니다. 같은 이름의 파일이 있습니다: ${current}`);
+		if (existing) throw new Error(t("폴더를 만들 수 없습니다. 같은 이름의 파일이 있습니다: {0}", current));
 		await app.vault.createFolder(current);
 	}
 }
@@ -60,7 +61,7 @@ export async function moveFolder(app: App, folder: TFolder, targetParent: string
 	const path = normalizePath(joinPath(targetParent, folder.name));
 	if (path === folder.path) return;
 	if (app.vault.getAbstractFileByPath(path)) {
-		throw new Error(`이미 같은 이름이 있습니다: ${path}`);
+		throw new Error(t("이미 같은 이름이 있습니다: {0}", path));
 	}
 	await app.fileManager.renameFile(folder, path);
 }
@@ -78,8 +79,8 @@ export function frontMatterOf(app: App, file: TFile): Record<string, unknown> {
 }
 
 export function typeOf(app: App, file: TFile): string | null {
-	const t = frontMatterOf(app, file).type;
-	return typeof t === "string" ? t : null;
+	const value = frontMatterOf(app, file).type;
+	return typeof value === "string" ? value : null;
 }
 
 /** 본문만 바꿉니다. frontmatter 블록은 그대로 둡니다. */

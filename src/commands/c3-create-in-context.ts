@@ -5,7 +5,7 @@ import { Notice, TFile } from "obsidian";
 import type { SaintFlowCore } from "../core";
 import { todayISO } from "../dates";
 import { toLink } from "../links";
-import { CreatableType, TYPE_LABEL, allowedChildren, isContextParent } from "../model";
+import { CreatableType, allowedChildren, isContextParent, typeLabel } from "../model";
 import {
 	addConnection,
 	addToMapStructure,
@@ -16,6 +16,7 @@ import {
 } from "../relations";
 import { openForm, pickFile, pickOne, promptRequired, str } from "../ui/modals";
 import { typeOf } from "../vault-io";
+import { t } from "../i18n";
 
 /** 부모를 정하고 허용된 자식 유형을 만듭니다. childType을 주면 유형 선택을 건너뜁니다. */
 export async function createInContextCommand(
@@ -28,20 +29,20 @@ export async function createInContextCommand(
 	const parentType = typeOf(core.app, parent);
 	const allowed = allowedChildren(parentType);
 	if (allowed.length === 0) {
-		new Notice(`${parent.basename}은(는) 자식을 만들 수 있는 부모가 아닙니다.`);
+		new Notice(t("{0}은(는) 자식을 만들 수 있는 부모가 아닙니다.", parent.basename));
 		return null;
 	}
 
 	let childType = options.childType ?? null;
 	if (childType && !allowed.includes(childType)) {
-		new Notice(`${TYPE_LABEL[childType]}은(는) ${parentType} 맥락에서 만들 수 없습니다.`);
+		new Notice(t("{0}은(는) {1} 맥락에서 만들 수 없습니다.", typeLabel(childType), parentType));
 		return null;
 	}
 	if (!childType) {
 		childType = await pickOne<CreatableType>(
 			core.app,
-			allowed.map((t) => ({ value: t, label: TYPE_LABEL[t] })),
-			`${parent.basename} 아래에 무엇을 만들까요?`
+			allowed.map((type) => ({ value: type, label: typeLabel(type) })),
+			t("{0} 아래에 무엇을 만들까요?", parent.basename)
 		);
 	}
 	if (!childType) return null;
@@ -59,10 +60,10 @@ async function resolveParent(core: SaintFlowCore, given?: TFile): Promise<TFile 
 		.filter((f) => isContextParent(typeOf(core.app, f)))
 		.sort((a, b) => a.basename.localeCompare(b.basename));
 	if (parents.length === 0) {
-		new Notice("부모가 될 노트가 없습니다. 먼저 프로젝트나 영역을 만드세요.");
+		new Notice(t("부모가 될 노트가 없습니다. 먼저 프로젝트나 영역을 만드세요."));
 		return null;
 	}
-	return await pickFile(core.app, parents, "부모 노트 고르기");
+	return await pickFile(core.app, parents, t("부모 노트 고르기"));
 }
 
 async function createChild(
@@ -79,26 +80,26 @@ async function createChild(
 		connectionReason = await promptRequired(
 			core.app,
 			{
-				title: "연결 이유",
-				description: `새 Zettel이 "${parent.basename}"과(와) 어떻게 이어지는지 한 줄로 씁니다.`,
-				cta: "다음",
+				title: t("연결 이유"),
+				description: t("새 Zettel이 \"{0}\"과(와) 어떻게 이어지는지 한 줄로 씁니다.", parent.basename),
+				cta: t("다음"),
 			},
-			"연결 이유가 없으면 만들지 않습니다."
+			t("연결 이유가 없으면 만들지 않습니다.")
 		);
 		if (!connectionReason) return null;
 	}
 
-	const titleLabel = childType === "zettel" ? "주장 문장" : childType === "task" ? "행동" : "제목";
+	const titleLabel = childType === "zettel" ? t("주장 문장") : childType === "task" ? t("행동") : t("제목");
 	let title = "";
 	let extra: Record<string, unknown> = {};
 
 	if (childType === "project") {
 		const values = await openForm(core.app, {
-			title: "프로젝트 만들기",
-			description: "완료 조건은 판정 가능한 한 문장이어야 합니다.",
+			title: t("프로젝트 만들기"),
+			description: t("완료 조건은 판정 가능한 한 문장이어야 합니다."),
 			fields: [
-				{ kind: "text", key: "title", label: "이름", required: true },
-				{ kind: "textarea", key: "outcome", label: "완료 조건", required: true },
+				{ kind: "text", key: "title", label: t("이름"), required: true },
+				{ kind: "textarea", key: "outcome", label: t("완료 조건"), required: true },
 				{ kind: "text", key: "deadline", label: "deadline", placeholder: "YYYY-MM-DD" },
 			],
 		});
@@ -115,12 +116,12 @@ async function createChild(
 		const value = await promptRequired(
 			core.app,
 			{
-				title: `${TYPE_LABEL[childType]} 만들기`,
-				description: `부모: ${parent.basename}`,
+				title: t("{0} 만들기", typeLabel(childType)),
+				description: t("부모: {0}", parent.basename),
 				placeholder: titleLabel,
-				cta: "만들기",
+				cta: t("만들기"),
 			},
-			"제목이 비어 있습니다."
+			t("제목이 비어 있습니다.")
 		);
 		if (!value) return null;
 		title = value;

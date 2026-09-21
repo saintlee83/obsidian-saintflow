@@ -12,6 +12,10 @@ import {
 	splitFrontMatter,
 } from "../src/sections";
 import { parseBlock, validateTypes } from "../src/blocks/block-syntax";
+import { setLocale } from "../src/i18n";
+
+// 이 테스트는 원문(한국어) 문구를 그대로 검사합니다.
+setLocale("ko");
 
 const ZETTEL = [
 	"## 생각",

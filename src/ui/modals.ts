@@ -1,6 +1,7 @@
 // 공용 입력 UI. 명령은 모두 Promise를 돌려주는 헬퍼만 씁니다.
 
 import { App, FuzzySuggestModal, Modal, Notice, Setting, TFile } from "obsidian";
+import { t } from "../i18n";
 
 export interface Choice<T> {
 	value: T;
@@ -70,7 +71,7 @@ class PromptModal extends Modal {
 			title: opts.title,
 			description: opts.description,
 			placeholder: opts.placeholder,
-			cta: opts.cta ?? "확인",
+			cta: opts.cta ?? t("확인"),
 			multiline: opts.multiline ?? false,
 		};
 	}
@@ -108,7 +109,7 @@ class PromptModal extends Modal {
 			});
 		}
 		new Setting(contentEl)
-			.addButton((btn) => btn.setButtonText("취소").onClick(() => this.close()))
+			.addButton((btn) => btn.setButtonText(t("취소")).onClick(() => this.close()))
 			.addButton((btn) => btn.setButtonText(this.opts.cta).setCta().onClick(() => this.submit()));
 	}
 
@@ -161,7 +162,7 @@ class ConfirmModal extends Modal {
 		this.opts = {
 			title: opts.title,
 			message: opts.message,
-			cta: opts.cta ?? "확인",
+			cta: opts.cta ?? t("확인"),
 			warning: opts.warning ?? false,
 		};
 	}
@@ -170,7 +171,7 @@ class ConfirmModal extends Modal {
 		this.setTitle(this.opts.title);
 		this.contentEl.createEl("p", { text: this.opts.message });
 		new Setting(this.contentEl)
-			.addButton((btn) => btn.setButtonText("취소").onClick(() => this.close()))
+			.addButton((btn) => btn.setButtonText(t("취소")).onClick(() => this.close()))
 			.addButton((btn) => {
 				btn.setButtonText(this.opts.cta).onClick(() => {
 					this.settled = true;
@@ -226,7 +227,7 @@ class FormModal extends Modal {
 	) {
 		super(app);
 		this.resolve = resolve;
-		this.opts = { title: opts.title, description: opts.description, fields: opts.fields, cta: opts.cta ?? "만들기" };
+		this.opts = { title: opts.title, description: opts.description, fields: opts.fields, cta: opts.cta ?? t("만들기") };
 		for (const field of opts.fields) {
 			if (field.kind === "toggle") this.values[field.key] = field.value ?? false;
 			else if (field.kind === "link") this.values[field.key] = field.value ?? null;
@@ -243,7 +244,7 @@ class FormModal extends Modal {
 		}
 		for (const field of this.opts.fields) this.renderField(contentEl, field);
 		new Setting(contentEl)
-			.addButton((btn) => btn.setButtonText("취소").onClick(() => this.close()))
+			.addButton((btn) => btn.setButtonText(t("취소")).onClick(() => this.close()))
 			.addButton((btn) => btn.setButtonText(this.opts.cta).setCta().onClick(() => this.submit()));
 	}
 
@@ -287,14 +288,14 @@ class FormModal extends Modal {
 			case "link": {
 				const label = setting.controlEl.createSpan({ cls: "saintflow-link-value" });
 				const current = this.values[field.key] as TFile | null;
-				label.setText(current ? current.basename : "없음");
+				label.setText(current ? current.basename : t("없음"));
 				setting.addButton((btn) =>
-					btn.setButtonText("고르기").onClick(async () => {
+					btn.setButtonText(t("고르기")).onClick(async () => {
 						if (field.files.length === 0) {
-							new Notice("고를 수 있는 노트가 없습니다.");
+							new Notice(t("고를 수 있는 노트가 없습니다."));
 							return;
 						}
-						const picked = await pickFile(this.app, field.files, `${field.label} 고르기`);
+						const picked = await pickFile(this.app, field.files, t("{0} 고르기", field.label));
 						if (picked) {
 							this.values[field.key] = picked;
 							label.setText(picked.basename);
@@ -304,10 +305,10 @@ class FormModal extends Modal {
 				setting.addExtraButton((btn) =>
 					btn
 						.setIcon("x")
-						.setTooltip("비우기")
+						.setTooltip(t("비우기"))
 						.onClick(() => {
 							this.values[field.key] = null;
-							label.setText("없음");
+							label.setText(t("없음"));
 						})
 				);
 				break;
@@ -321,7 +322,7 @@ class FormModal extends Modal {
 			const value = this.values[field.key];
 			const empty = field.kind === "link" ? !value : String(value ?? "").trim() === "";
 			if (empty) {
-				new Notice(`${field.label}은(는) 필수입니다.`);
+				new Notice(t("{0}은(는) 필수입니다.", field.label));
 				return;
 			}
 		}

@@ -10,35 +10,36 @@ import {
 	parseIntervals,
 } from "./config";
 import { SCHEMA_VERSION } from "./schema";
+import { t } from "./i18n";
 
 export type { FolderSettings, PrefixSettings, SaintFlowSettings };
 export { DEFAULT_SETTINGS, parseIntervals };
 
-const FOLDER_LABELS: [keyof FolderSettings, string][] = [
-	["sweep", "수집함 (S)"],
+const folderLabels = (): [keyof FolderSettings, string][] => [
+	["sweep", t("수집함 (S)")],
 	["projects", "Projects"],
 	["areas", "Areas"],
 	["resources", "Resources"],
 	["archive", "Archive"],
 	["zettels", "Zettels"],
 	["maps", "Maps"],
-	["narrate", "회상 세션 (N)"],
+	["narrate", t("회상 세션 (N)")],
 	["transform", "Task (T)"],
 	["daily", "Daily"],
 	["reviews", "Reviews"],
-	["templates", "템플릿"],
-	["reports", "점검 리포트"],
+	["templates", t("템플릿")],
+	["reports", t("점검 리포트")],
 ];
 
-const PREFIX_LABELS: [keyof PrefixSettings, string][] = [
-	["project", "프로젝트"],
-	["area", "영역"],
-	["working", "작업 노트"],
-	["output", "결과물"],
-	["source", "참고 자료"],
-	["map", "지도"],
-	["session", "회상 세션"],
-	["review", "검토"],
+const prefixLabels = (): [keyof PrefixSettings, string][] => [
+	["project", t("프로젝트")],
+	["area", t("영역")],
+	["working", t("작업 노트")],
+	["output", t("결과물")],
+	["source", t("참고 자료")],
+	["map", t("지도")],
+	["session", t("회상 세션")],
+	["review", t("검토")],
 ];
 
 export class SaintFlowSettingTab extends PluginSettingTab {
@@ -53,11 +54,11 @@ export class SaintFlowSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
-		new Setting(containerEl).setName("회상").setHeading();
+		new Setting(containerEl).setName(t("회상")).setHeading();
 
 		new Setting(containerEl)
-			.setName("회상 간격")
-			.setDesc("box 1부터 순서대로 쓸 간격(일)입니다. 쉼표로 구분합니다.")
+			.setName(t("회상 간격"))
+			.setDesc(t("box 1부터 순서대로 쓸 간격(일)입니다. 쉼표로 구분합니다."))
 			.addText((text) =>
 				text
 					.setPlaceholder("1, 3, 7, 14, 30")
@@ -72,8 +73,8 @@ export class SaintFlowSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
-			.setName("오래된 seed 임계값")
-			.setDesc("seed 상태로 이 일수를 넘긴 Zettel을 점검에서 표시합니다.")
+			.setName(t("오래된 seed 임계값"))
+			.setDesc(t("seed 상태로 이 일수를 넘긴 Zettel을 점검에서 표시합니다."))
 			.addText((text) =>
 				text
 					.setPlaceholder("14")
@@ -85,11 +86,11 @@ export class SaintFlowSettingTab extends PluginSettingTab {
 					})
 			);
 
-		new Setting(containerEl).setName("시작과 화면").setHeading();
+		new Setting(containerEl).setName(t("시작과 화면")).setHeading();
 
 		new Setting(containerEl)
-			.setName("시작 시 Home 열기")
-			.setDesc("C17. Obsidian을 열면 Home 노트를 활성 탭으로 띄웁니다.")
+			.setName(t("시작 시 Home 열기"))
+			.setDesc(t("C17. Obsidian을 열면 Home 노트를 활성 탭으로 띄웁니다."))
 			.addToggle((tg) =>
 				tg.setValue(this.plugin.settings.openHomeOnStart).onChange(async (v) => {
 					this.plugin.settings.openHomeOnStart = v;
@@ -98,7 +99,7 @@ export class SaintFlowSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
-			.setName("Home 경로")
+			.setName(t("Home 경로"))
 			.addText((text) =>
 				text
 					.setPlaceholder(DEFAULT_SETTINGS.homePath)
@@ -110,8 +111,8 @@ export class SaintFlowSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
-			.setName("파일 탐색기에서 허브 구분 표시")
-			.setDesc("C18. 컨테이너 폴더와 이름이 같은 허브 노트를 굵게 표시합니다.")
+			.setName(t("파일 탐색기에서 허브 구분 표시"))
+			.setDesc(t("C18. 컨테이너 폴더와 이름이 같은 허브 노트를 굵게 표시합니다."))
 			.addToggle((tg) =>
 				tg.setValue(this.plugin.settings.markHubsInExplorer).onChange(async (v) => {
 					this.plugin.settings.markHubsInExplorer = v;
@@ -120,11 +121,11 @@ export class SaintFlowSettingTab extends PluginSettingTab {
 				})
 			);
 
-		new Setting(containerEl).setName("점검").setHeading();
+		new Setting(containerEl).setName(t("점검")).setHeading();
 
 		new Setting(containerEl)
-			.setName("시작 시 규칙 검사")
-			.setDesc("C15. Obsidian을 열 때 vault를 검사하고 위반 수를 알립니다.")
+			.setName(t("시작 시 규칙 검사"))
+			.setDesc(t("C15. Obsidian을 열 때 vault를 검사하고 위반 수를 알립니다."))
 			.addToggle((tg) =>
 				tg.setValue(this.plugin.settings.lintOnStartup).onChange(async (v) => {
 					this.plugin.settings.lintOnStartup = v;
@@ -133,8 +134,8 @@ export class SaintFlowSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
-			.setName("이동·이름 변경 시 규칙 검사")
-			.setDesc("C15. 파일을 옮기거나 이름을 바꿀 때 그 파일만 검사해 바로 알립니다.")
+			.setName(t("이동·이름 변경 시 규칙 검사"))
+			.setDesc(t("C15. 파일을 옮기거나 이름을 바꿀 때 그 파일만 검사해 바로 알립니다."))
 			.addToggle((tg) =>
 				tg.setValue(this.plugin.settings.lintOnRename).onChange(async (v) => {
 					this.plugin.settings.lintOnRename = v;
@@ -143,8 +144,8 @@ export class SaintFlowSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
-			.setName("주간 검토 시 리포트 저장")
-			.setDesc("C20. C10을 실행하면 점검 리포트 JSON을 함께 저장합니다.")
+			.setName(t("주간 검토 시 리포트 저장"))
+			.setDesc(t("C20. C10을 실행하면 점검 리포트 JSON을 함께 저장합니다."))
 			.addToggle((tg) =>
 				tg.setValue(this.plugin.settings.reportOnWeekly).onChange(async (v) => {
 					this.plugin.settings.reportOnWeekly = v;
@@ -153,19 +154,19 @@ export class SaintFlowSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
-			.setName("스키마 버전")
+			.setName(t("스키마 버전"))
 			.setDesc(
-				`현재 플러그인 스키마는 v${SCHEMA_VERSION}, 이 vault에 맞춘 버전은 v${this.plugin.settings.schemaVersion}입니다.`
+				t("현재 플러그인 스키마는 v{0}, 이 vault에 맞춘 버전은 v{1}입니다.", SCHEMA_VERSION, this.plugin.settings.schemaVersion)
 			)
 			.addButton((btn) =>
-				btn.setButtonText("C19 마이그레이션 실행").onClick(() => {
+				btn.setButtonText(t("C19 마이그레이션 실행")).onClick(() => {
 					void this.plugin.runMigration();
 				})
 			);
 
-		new Setting(containerEl).setName("폴더 경로").setHeading();
+		new Setting(containerEl).setName(t("폴더 경로")).setHeading();
 
-		for (const [key, label] of FOLDER_LABELS) {
+		for (const [key, label] of folderLabels()) {
 			new Setting(containerEl).setName(label).addText((text) =>
 				text
 					.setPlaceholder(DEFAULT_SETTINGS.folders[key])
@@ -177,9 +178,9 @@ export class SaintFlowSettingTab extends PluginSettingTab {
 			);
 		}
 
-		new Setting(containerEl).setName("파일명 접두사").setHeading();
+		new Setting(containerEl).setName(t("파일명 접두사")).setHeading();
 
-		for (const [key, label] of PREFIX_LABELS) {
+		for (const [key, label] of prefixLabels()) {
 			new Setting(containerEl).setName(label).addText((text) =>
 				text
 					.setPlaceholder(DEFAULT_SETTINGS.prefixes[key])
@@ -192,10 +193,10 @@ export class SaintFlowSettingTab extends PluginSettingTab {
 		}
 
 		new Setting(containerEl)
-			.setName("기본값으로 되돌리기")
-			.setDesc("폴더, 접두사, 회상 간격을 설계안 기본값으로 돌립니다.")
+			.setName(t("기본값으로 되돌리기"))
+			.setDesc(t("폴더, 접두사, 회상 간격을 설계안 기본값으로 돌립니다."))
 			.addButton((btn) =>
-				btn.setButtonText("되돌리기").onClick(async () => {
+				btn.setButtonText(t("되돌리기")).onClick(async () => {
 					const schemaVersion = this.plugin.settings.schemaVersion;
 					this.plugin.settings = { ...structuredClone(DEFAULT_SETTINGS), schemaVersion };
 					await this.plugin.saveSettings();

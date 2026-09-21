@@ -15,6 +15,7 @@ import {
 } from "../schema";
 import { SaintType } from "../model";
 import { frontMatterOf, setFrontMatter } from "../vault-io";
+import { t } from "../i18n";
 
 export interface NoteChange {
 	file: TFile;
@@ -110,9 +111,9 @@ export async function applyMigration(core: SaintFlowCore, plan: MigrationPlan): 
 		});
 		const parts: string[] = [];
 		if (change.renames.length > 0) {
-			parts.push(`이름 변경 ${change.renames.map(([a, b]) => `${a}→${b}`).join(", ")}`);
+			parts.push(t("이름 변경 {0}", change.renames.map(([a, b]) => `${a}→${b}`).join(", ")));
 		}
-		if (change.addKeys.length > 0) parts.push(`추가 ${change.addKeys.join(", ")}`);
+		if (change.addKeys.length > 0) parts.push(t("추가 {0}", change.addKeys.join(", ")));
 		log.push(`${change.file.path}: ${parts.join(" · ")}`);
 	}
 	core.index.invalidate();
@@ -137,20 +138,25 @@ class MigrationModal extends Modal {
 	onOpen(): void {
 		const { contentEl } = this;
 		contentEl.empty();
-		this.setTitle(`스키마 마이그레이션 · v${SCHEMA_VERSION}`);
+		this.setTitle(t("스키마 마이그레이션 · v{0}", SCHEMA_VERSION));
 
 		const { changes, reportsOnly, addCount, renameCount } = this.plan;
 		contentEl.createDiv({
 			cls: "saintflow-form-note",
 			text:
 				changes.length === 0
-					? "바꿀 노트가 없습니다. 본문은 어떤 경우에도 건드리지 않습니다."
-					: `노트 ${changes.length}개에서 속성 ${addCount}개를 추가하고 키 ${renameCount}개의 이름을 바꿉니다. 본문은 건드리지 않습니다.`,
+					? t("바꿀 노트가 없습니다. 본문은 어떤 경우에도 건드리지 않습니다.")
+					: t(
+							"노트 {0}개에서 속성 {1}개를 추가하고 키 {2}개의 이름을 바꿉니다. 본문은 건드리지 않습니다.",
+							changes.length,
+							addCount,
+							renameCount
+						),
 		});
 
 		if (changes.length > 0) {
 			const list = contentEl.createDiv({ cls: "saintflow-lint-list" });
-			list.createEl("h4", { text: `변경 미리보기 (${changes.length})` });
+			list.createEl("h4", { text: t("변경 미리보기 ({0})", changes.length) });
 			for (const change of changes.slice(0, 50)) {
 				const parts: string[] = [];
 				if (change.renames.length > 0) {
@@ -160,28 +166,28 @@ class MigrationModal extends Modal {
 				new Setting(list).setName(change.file.basename).setDesc(parts.join(" · "));
 			}
 			if (changes.length > 50) {
-				list.createDiv({ cls: "saintflow-link-value", text: `외 ${changes.length - 50}개` });
+				list.createDiv({ cls: "saintflow-link-value", text: t("외 {0}개", changes.length - 50) });
 			}
 		}
 
 		const reported = [...changes, ...reportsOnly].filter((c) => c.reports.length > 0);
 		if (reported.length > 0) {
 			const list = contentEl.createDiv({ cls: "saintflow-lint-list" });
-			list.createEl("h4", { text: `보고만 하는 값 문제 (${reported.length})` });
+			list.createEl("h4", { text: t("보고만 하는 값 문제 ({0})", reported.length) });
 			for (const change of reported.slice(0, 30)) {
 				new Setting(list).setName(change.file.basename).setDesc(change.reports.join(" / "));
 			}
 			list.createDiv({
 				cls: "saintflow-link-value",
-				text: "허용값 밖의 값은 자동으로 바꾸지 않습니다. C15 규칙 검사에서 하나씩 고르세요.",
+				text: t("허용값 밖의 값은 자동으로 바꾸지 않습니다. C15 규칙 검사에서 하나씩 고르세요."),
 			});
 		}
 
 		new Setting(contentEl)
-			.addButton((btn) => btn.setButtonText("취소").onClick(() => this.close()))
+			.addButton((btn) => btn.setButtonText(t("취소")).onClick(() => this.close()))
 			.addButton((btn) =>
 				btn
-					.setButtonText(changes.length === 0 ? "버전만 맞추기" : "적용")
+					.setButtonText(changes.length === 0 ? t("버전만 맞추기") : t("적용"))
 					.setCta()
 					.onClick(async () => {
 						const log = await applyMigration(this.core, this.plan);
@@ -190,8 +196,8 @@ class MigrationModal extends Modal {
 						console.info("[SaintFlow] C19 마이그레이션", log);
 						new Notice(
 							log.length === 0
-								? `변경 없음. 스키마 버전을 v${SCHEMA_VERSION}로 맞췄습니다.`
-								: `${log.length}개 노트를 갱신했습니다. 자세한 내용은 콘솔 로그에 있습니다.`,
+								? t("변경 없음. 스키마 버전을 v{0}로 맞췄습니다.", SCHEMA_VERSION)
+								: t("{0}개 노트를 갱신했습니다. 자세한 내용은 콘솔 로그에 있습니다.", log.length),
 							8000
 						);
 						this.close();
@@ -208,7 +214,7 @@ class MigrationModal extends Modal {
 export function noticeIfOutdated(core: SaintFlowCore): void {
 	if (core.settings.schemaVersion >= SCHEMA_VERSION) return;
 	new Notice(
-		`SaintFlow 스키마가 v${SCHEMA_VERSION}로 올랐습니다. "C19 스키마 마이그레이션"을 실행하세요.`,
+		t("SaintFlow 스키마가 v{0}로 올랐습니다. \"C19 스키마 마이그레이션\"을 실행하세요.", SCHEMA_VERSION),
 		8000
 	);
 }
