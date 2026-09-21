@@ -1,0 +1,56 @@
+properties:
+  status:
+    displayName: "상태"
+  project:
+    displayName: "프로젝트"
+
+views:
+  - type: table
+    name: "수집함"
+    filters:
+      and:
+        - file.inFolder("0_Sweep")
+    order:
+      - file.name
+      - file.ctime
+  - type: table
+    name: "대기 중"
+    filters:
+      and:
+        - file.inFolder("4_Transform")
+        - 'status == "waiting"'
+    order:
+      - file.name
+      - project
+      - file.mtime
+  - type: table
+    name: "연결 없는 Zettel"
+    filters:
+      and:
+        - file.inFolder("2_Internalize/Zettels")
+        - 'file.backlinks.length == 0'
+        - 'file.links.length == 0'
+    order:
+      - file.name
+      - status
+      - file.ctime
+  - type: table
+    name: "오래된 seed"
+    filters:
+      and:
+        - file.inFolder("2_Internalize/Zettels")
+        - 'status == "seed"'
+        - '(today() - file.ctime).days > 14'
+    order:
+      - file.name
+      - file.ctime
+  - type: table
+    name: "uses 없는 결과물"
+    filters:
+      and:
+        - 'type == "output"'
+        - '!uses'
+    order:
+      - file.name
+      - project
+      - status

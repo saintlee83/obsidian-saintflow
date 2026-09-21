@@ -1,0 +1,76 @@
+filters:
+  and:
+    - file.inFolder("1_Arrange/Projects")
+    - 'type == "project"'
+
+formulas:
+  # 검증 필요: 백링크 대상 Task의 status까지 거르는 식
+  next_actions: 'file.backlinks.filter(value.asFile().properties.status == "next").length'
+  stalled: 'if(status == "active" && file.backlinks.filter(value.asFile().properties.status == "next").length == 0, "STALLED", "")'
+
+properties:
+  status:
+    displayName: "상태"
+  area:
+    displayName: "영역"
+  outcome:
+    displayName: "완료 조건"
+  deadline:
+    displayName: "기한"
+  formula.next_actions:
+    displayName: "다음 행동 수"
+  formula.stalled:
+    displayName: "점검"
+
+views:
+  - type: table
+    name: "진행 중"
+    filters:
+      and:
+        - 'status == "active"'
+    order:
+      - file.name
+      - area
+      - outcome
+      - deadline
+      - formula.next_actions
+      - formula.stalled
+  - type: table
+    name: "멈춘 프로젝트"
+    filters:
+      and:
+        - 'formula.stalled == "STALLED"'
+    order:
+      - file.name
+      - area
+      - outcome
+  - type: table
+    name: "영역별"
+    filters:
+      and:
+        - 'status != "done"'
+        - file.hasLink(this.file)
+    order:
+      - file.name
+      - status
+      - outcome
+      - deadline
+  - type: table
+    name: "보류 및 언젠가"
+    filters:
+      or:
+        - 'status == "on-hold"'
+        - 'status == "someday"'
+    order:
+      - file.name
+      - status
+      - area
+  - type: table
+    name: "완료"
+    filters:
+      and:
+        - 'status == "done"'
+    order:
+      - file.name
+      - area
+      - file.mtime

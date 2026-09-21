@@ -1,0 +1,85 @@
+filters:
+  and:
+    - file.inFolder("4_Transform")
+    - 'type == "task"'
+
+properties:
+  status:
+    displayName: "상태"
+  project:
+    displayName: "프로젝트"
+  area:
+    displayName: "영역"
+  scheduled:
+    displayName: "예정일"
+  due:
+    displayName: "마감일"
+
+views:
+  - type: table
+    name: "다음 행동"
+    filters:
+      and:
+        - 'status == "next"'
+    order:
+      - file.name
+      - project
+      - area
+      - due
+  - type: table
+    name: "예정 및 마감"
+    filters:
+      and:
+        - 'status != "done"'
+        - or:
+            - 'scheduled'
+            - 'due'
+    order:
+      - file.name
+      - status
+      - scheduled
+      - due
+      - project
+  - type: table
+    name: "대기"
+    filters:
+      and:
+        - 'status == "waiting"'
+    order:
+      - file.name
+      - project
+      - area
+      - file.mtime
+  - type: table
+    name: "언젠가"
+    filters:
+      and:
+        - 'status == "someday"'
+    order:
+      - file.name
+      - project
+      - area
+  - type: table
+    name: "연결된 Task"
+    filters:
+      and:
+        - 'status != "done"'
+        - file.hasLink(this.file)
+    groupBy:
+      property: status
+      direction: ASC
+    order:
+      - file.name
+      - status
+      - scheduled
+      - due
+  - type: table
+    name: "완료"
+    filters:
+      and:
+        - 'status == "done"'
+    order:
+      - file.name
+      - project
+      - area
+      - file.mtime

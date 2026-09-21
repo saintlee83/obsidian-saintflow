@@ -1,0 +1,49 @@
+filters:
+  or:
+    - file.inFolder("1_Arrange/Resources")
+    - file.inFolder("2_Internalize")
+
+properties:
+  type:
+    displayName: "유형"
+  status:
+    displayName: "성숙도"
+  recall:
+    displayName: "복습 대상"
+
+views:
+  - type: table
+    name: "연결된 지식"
+    filters:
+      and:
+        - file.hasLink(this.file)
+    groupBy:
+      property: type
+      direction: ASC
+    order:
+      - file.name
+      - type
+      - status
+  - type: table
+    name: "Source"
+    filters:
+      and:
+        - 'type == "source"'
+    order:
+      - file.name
+      - project
+      - area
+      - file.mtime
+  - type: table
+    name: "Zettel"
+    filters:
+      and:
+        - 'type == "zettel"'
+    groupBy:
+      property: status
+      direction: ASC
+    order:
+      - file.name
+      - status
+      - recall
+      - file.mtime
