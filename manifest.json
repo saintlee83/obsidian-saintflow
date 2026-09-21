@@ -1,0 +1,9 @@
+{
+  "id": "saintflow",
+  "name": "SaintFlow",
+  "version": "0.2.0",
+  "minAppVersion": "1.9.0",
+  "description": "SAINT 단계와 Flow 검토 루프를 위한 생성·관계·점검 명령 모음입니다.",
+  "author": "saintlee83",
+  "isDesktopOnly": false
+}
