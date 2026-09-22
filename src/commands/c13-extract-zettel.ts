@@ -1,14 +1,14 @@
-// C13 Source에서 Zettel 추출: "추출할 생각"의 체크리스트 항목 하나를 seed Zettel로 옮깁니다.
+// C13 Resource에서 Zettel 추출: "추출할 생각"의 체크리스트 항목 하나를 seed Zettel로 옮깁니다.
 // 본문은 쓰지 않습니다. 생각 섹션은 빈 채로 둡니다(규칙 6).
 
 import { Editor, Notice, TFile } from "obsidian";
 import type { SaintFlowCore } from "../core";
+import { t } from "../i18n";
 import { toLink } from "../links";
 import { createTypedNote, inheritedRelations } from "../relations";
 import { SECTION, findSection } from "../sections";
 import { confirm, promptRequired } from "../ui/modals";
 import { frontMatterOf, typeOf } from "../vault-io";
-import { t } from "../i18n";
 
 /** 체크리스트 항목의 문구. 항목이 아니면 null입니다. */
 export function parseChecklistItem(line: string): { indent: string; text: string } | null {
@@ -25,7 +25,7 @@ export function inExtractSection(body: string, line: number): boolean {
 }
 
 export function canExtract(app: SaintFlowCore["app"], file: TFile | null, editor: Editor): boolean {
-	if (!file || typeOf(app, file) !== "source") return false;
+	if (!file || typeOf(app, file) !== "resource") return false;
 	const cursor = editor.getCursor();
 	if (!parseChecklistItem(editor.getLine(cursor.line))) return false;
 	return inExtractSection(editor.getValue(), cursor.line);
@@ -67,7 +67,7 @@ export async function extractZettelCommand(
 		const keys = Object.keys(inherited).join(", ");
 		const take = await confirm(core.app, {
 			title: t("속성 상속"),
-			message: t("Source의 {0}을(를) 새 Zettel에도 넣을까요?", keys),
+			message: t("Resource의 {0}을(를) 새 Zettel에도 넣을까요?", keys),
 			cta: t("상속"),
 		});
 		if (take) relations = inherited;
@@ -76,10 +76,10 @@ export async function extractZettelCommand(
 	const zettel = await createTypedNote(core, "zettel", {
 		title,
 		overrides: {
-			status: "seed",
+			maturity: "seed",
 			recall: false,
 			box: 1,
-			sources: [toLink(source.basename)],
+			source: [toLink(source.basename)],
 			...relations,
 		},
 	});

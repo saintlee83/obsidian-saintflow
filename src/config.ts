@@ -13,6 +13,7 @@ export interface FolderSettings {
 	maps: string;
 	narrate: string;
 	transform: string;
+	outputs: string;
 	daily: string;
 	reviews: string;
 	templates: string;
@@ -60,19 +61,20 @@ export const DEFAULT_SETTINGS: SaintFlowSettings = {
 		zettels: "2_Internalize/Zettels",
 		maps: "2_Internalize/Maps",
 		narrate: "3_Narrate",
-		transform: "4_Transform",
+		transform: "4_Transform/Tasks",
+		outputs: "4_Transform/Outputs",
 		daily: "5_Flow/Daily",
 		reviews: "5_Flow/Reviews",
 		templates: "9_System/Templates",
 		reports: "9_System/reports",
 	},
 	prefixes: {
-		project: "P-",
-		area: "A-",
+		project: "",
+		area: "",
 		working: "W-",
-		output: "O-",
-		source: "S-",
-		map: "M-",
+		output: "",
+		source: "",
+		map: "",
 		session: "N-",
 		review: "R-",
 	},
@@ -84,7 +86,7 @@ export const DEFAULT_SETTINGS: SaintFlowSettings = {
 	lintOnRename: false,
 	reportOnWeekly: true,
 	markHubsInExplorer: true,
-	schemaVersion: 0,
+	schemaVersion: 2,
 };
 
 export function parseIntervals(raw: string, fallback: number[]): number[] {
@@ -99,6 +101,16 @@ export function parseIntervals(raw: string, fallback: number[]): number[] {
 /** 저장된 설정을 기본값과 합칩니다. 키가 늘어도 기존 data.json이 깨지지 않습니다. */
 export function mergeSettings(stored: Partial<SaintFlowSettings> | null): SaintFlowSettings {
 	const base = structuredClone(DEFAULT_SETTINGS);
+	// Update only former defaults; preserve customized locations and prefixes.
+	if (stored && (stored.schemaVersion ?? 0) < 2) {
+		stored = structuredClone(stored);
+		if (stored.folders?.transform === "4_Transform") stored.folders.transform = base.folders.transform;
+		const old = { project: "P-", area: "A-", output: "O-", source: "S-", map: "M-" };
+		for (const [key, value] of Object.entries(old)) {
+			const prefix = key as keyof PrefixSettings;
+			if (stored.prefixes?.[prefix] === value) stored.prefixes[prefix] = base.prefixes[prefix];
+		}
+	}
 	return {
 		...base,
 		...(stored ?? {}),

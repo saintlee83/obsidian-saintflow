@@ -3,11 +3,11 @@
 
 import { Notice, TFile } from "obsidian";
 import type { SaintFlowCore } from "../core";
-import { toLink } from "../links";
-import { areaStatusOptions } from "../model";
-import { createTypedNote, homeFolderFor } from "../relations";
-import { confirm, file as pickedFile, openForm, promptRequired, str } from "../ui/modals";
 import { t } from "../i18n";
+import { toLink } from "../links";
+import { areaStatusOptions, reviewCycleOptions } from "../model";
+import { createTypedNote, homeFolderFor } from "../relations";
+import { confirm, openForm, file as pickedFile, promptRequired, str } from "../ui/modals";
 
 export async function newProjectCommand(core: SaintFlowCore): Promise<TFile | null> {
 	const areas = core.index.allOfType("area");
@@ -18,20 +18,20 @@ export async function newProjectCommand(core: SaintFlowCore): Promise<TFile | nu
 			{ kind: "text", key: "title", label: t("이름"), required: true, placeholder: t("기술비교보고서") },
 			{
 				kind: "textarea",
-				key: "outcome",
+				key: "done_criteria",
 				label: t("완료 조건"),
 				required: true,
 				placeholder: t("무엇이 있으면 끝난 것인가?"),
 			},
 			{ kind: "link", key: "area", label: "area", files: areas },
-			{ kind: "text", key: "deadline", label: "deadline", placeholder: "YYYY-MM-DD" },
+			{ kind: "text", key: "due", label: "due", placeholder: "YYYY-MM-DD" },
 			{ kind: "text", key: "repo", label: "repo", placeholder: t("저장소 URL 또는 로컬 경로") },
 		],
 	});
 	if (!values) return null;
 
-	const outcome = str(values, "outcome");
-	if (!outcome) {
+	const done_criteria = str(values, "done_criteria");
+	if (!done_criteria) {
 		new Notice(t("완료 조건이 비어 있어 만들지 않았습니다."));
 		return null;
 	}
@@ -41,9 +41,9 @@ export async function newProjectCommand(core: SaintFlowCore): Promise<TFile | nu
 		title: str(values, "title"),
 		overrides: {
 			status: "active",
-			outcome,
-			...(area ? { area: toLink(area.basename) } : {}),
-			...(str(values, "deadline") ? { deadline: str(values, "deadline") } : {}),
+			done_criteria,
+			...(area ? { area: [toLink(area.basename)] } : {}),
+			...(str(values, "due") ? { due: str(values, "due") } : {}),
 			...(str(values, "repo") ? { repo: str(values, "repo") } : {}),
 		},
 	});
@@ -66,8 +66,8 @@ export async function newAreaCommand(core: SaintFlowCore): Promise<TFile | null>
 				kind: "dropdown",
 				key: "review_cycle",
 				label: "review_cycle",
-				options: { "": t("(없음)"), weekly: "weekly", monthly: "monthly", quarterly: "quarterly" },
-				value: "",
+				options: reviewCycleOptions(),
+				value: "매월",
 			},
 		],
 	});
@@ -112,7 +112,7 @@ async function promptFirstNextAction(core: SaintFlowCore, hub: TFile): Promise<v
 	const task = await createTypedNote(core, "task", {
 		title,
 		folder: homeFolderFor(core.settings, "task"),
-		overrides: { status: "next", project: toLink(hub.basename) },
+		overrides: { status: "next", project: [toLink(hub.basename)] },
 	});
 	if (task) new Notice(t("다음 행동: {0}", task.basename));
 }

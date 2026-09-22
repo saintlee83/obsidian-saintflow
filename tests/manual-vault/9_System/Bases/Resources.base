@@ -1,0 +1,76 @@
+filters:
+  and:
+    - 'file.inFolder("1_Arrange/Resources")'
+formulas:
+  stage: 'if(status == "to read", 1, if(status == "reading", 2, if(status == "processed", 3, if(status == "reference", 4, 0))))'
+  zettels: 'file.backlinks.filter(value.asFile().properties.type == "zettel").length'
+properties:
+  file.name:
+    displayName: 이름
+  status:
+    displayName: 상태
+  kind:
+    displayName: 종류
+  author:
+    displayName: 저자
+  link:
+    displayName: 링크
+  project:
+    displayName: Project
+  area:
+    displayName: Area
+  created:
+    displayName: 수집일
+  formula.zettels:
+    displayName: Zettel 수
+views:
+  - type: table
+    name: 전체
+    filters:
+      and:
+        - 'archived != true'
+    order:
+      - file.name
+      - status
+      - kind
+      - author
+      - formula.zettels
+      - project
+      - area
+      - link
+    sort:
+      - property: created
+        direction: DESC
+  - type: table
+    name: 처리 단계
+    filters:
+      and:
+        - 'archived != true'
+    order:
+      - file.name
+      - status
+      - kind
+      - formula.zettels
+    sort:
+      - property: formula.stage
+        direction: ASC
+      - property: created
+        direction: DESC
+  - type: table
+    name: 연결됨
+    filters:
+      and:
+        - 'file.hasLink(this.file)'
+        - 'archived != true'
+    order:
+      - file.name
+      - status
+      - kind
+  - type: table
+    name: 보관
+    filters:
+      and:
+        - 'archived == true'
+    order:
+      - file.name
+      - kind

@@ -2,13 +2,14 @@
 // 2분 안에 끝나는 일이면 지금 하고 done Task로 기록한 뒤 다음으로 넘어갑니다.
 
 import { Notice, TFile } from "obsidian";
-import { ARRANGE_TYPES, CreatableType, typeLabel } from "../model";
 import type { SaintFlowCore } from "../core";
-import { todayISO } from "../dates";
-import { homeFolderFor } from "../placement";
-import { ArrangeResult, applyArrange, collectInput } from "./c2-arrange";
-import { confirm, pickOne } from "../ui/modals";
 import { t } from "../i18n";
+import { ARRANGE_TYPES, CreatableType, typeLabel } from "../model";
+import { homeFolderFor } from "../placement";
+import { isInboxNote } from "../scope";
+import { confirm, pickOne } from "../ui/modals";
+import { frontMatterOf } from "../vault-io";
+import { ArrangeResult, applyArrange, collectInput } from "./c2-arrange";
 
 type Step = "two-minute" | "arrange" | "skip" | "delete" | "stop";
 
@@ -24,8 +25,8 @@ interface Tally {
 function judgement(): string {
 	return [
 		t("1. 행동인가? → Task. 여러 행동이 필요하면 프로젝트"),
-		t("2. 특정 프로젝트·영역과 함께 끝나는가? → 그 컨테이너"),
-		t("3. 자료가 말하는 것을 정리했는가? → Source"),
+		t("2. 결과물인가? → Output, 관계는 속성으로 기록"),
+		t("3. 자료가 말하는 것을 정리했는가? → Resource"),
 		t("4. 내가 이해한 것을 자기 말로 썼는가? → Zettel"),
 		t("5. 보존만 하면 되는가? → vault 밖"),
 	].join("\n");
@@ -40,7 +41,7 @@ export async function inboxCommand(core: SaintFlowCore): Promise<void> {
 
 	const tally: Tally = { processed: 0, skipped: 0, deleted: 0, twoMinute: 0, byType: new Map() };
 
-	for (let i = 0; i < items.length; i++) {
+	for (let i = 0;i < items.length;i++) {
 		const file = items[i];
 		// 파일이 사이에 사라졌을 수 있습니다.
 		if (!(core.app.vault.getAbstractFileByPath(file.path) instanceof TFile)) continue;
@@ -138,7 +139,7 @@ async function handleTwoMinute(core: SaintFlowCore, file: TFile): Promise<boolea
 	const result: ArrangeResult = {
 		title: file.basename,
 		folder: homeFolderFor(core.settings, "task"),
-		overrides: { status: "done", completed: todayISO() },
+		overrides: { status: "done" },
 	};
 	return await applyArrange(core, file, "task", result);
 }
@@ -149,10 +150,9 @@ function bump(tally: Tally, type: CreatableType): void {
 
 /** 생성 순(ctime)으로 수집함 파일을 모읍니다. */
 export function sweepFiles(core: SaintFlowCore): TFile[] {
-	const sweep = core.settings.folders.sweep;
 	return core.app.vault
 		.getMarkdownFiles()
-		.filter((f) => f.path === sweep || f.path.startsWith(sweep + "/"))
+		.filter((f) => isInboxNote(core.settings, f.path, frontMatterOf(core.app, f)))
 		.sort((a, b) => a.stat.ctime - b.stat.ctime);
 }
 

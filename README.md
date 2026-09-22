@@ -1,220 +1,75 @@
-# SaintFlow — Obsidian plugin
+# SaintFlow for Obsidian
 
-An implementation of chapter 5 of `9_System/SaintFlow 최종 설계안.md` (the SaintFlow design document)
-in the SaintFlow vault. The design document is the single source of truth: to change behaviour,
-change the document first.
+[한국어](README.ko.md)
 
-- Plugin ID: `saintflow`
-- No Node APIs are used, so it runs on mobile as well (`isDesktopOnly: false`).
-- Division of labour (5.2): Bases owns the views, the plugin owns creation, mutation and check computation.
-- The plugin never writes user prose (rule 6). All it produces is skeletons and link lines.
+SaintFlow provides capture, organization, context creation, relations, recall, and workflow checks. Version 0.3.0 follows the **SaintFlow Manual** vault, verified against `C:\Users\saint\Documents\work\SaintFlow`. Bases provide views; the plugin creates and updates notes. The runtime uses Obsidian APIs and supports mobile.
 
-> The plugin UI follows Obsidian's own language setting — see [Language](#language).
-> Command names below are the English ones; in a Korean Obsidian the palette shows the Korean names,
-> which are listed in [README.ko.md](README.ko.md).
+## Build and install
 
-## Build
-
-This repository lives outside the vault. Only build output is written into the vault's
-`.obsidian/plugins/saintflow/`, so `node_modules` never lands inside the vault and never
-reaches Obsidian Sync.
-
-```
-npm install
-npm run build      # type-check + bundle into the vault
-npm run dev        # watch mode
-npm test           # unit tests for the pure functions
-npm run typecheck
+```sh
+npm ci
+npm test
+npm run build
 ```
 
-The vault path defaults to `../SaintFlow`, next to this repository. Point it elsewhere with an
-environment variable:
+The build writes `main.js`, `manifest.json`, and `styles.css` to `dist/`. To install directly into a vault with PowerShell:
 
-```
-SAINTFLOW_VAULT="D:/vaults/SaintFlow" npm run build
+```powershell
+$env:SAINTFLOW_VAULT = 'C:\Users\saint\Documents\work\SaintFlow'
+npm run build
 ```
 
-After building, enable it in Obsidian under Settings → Community plugins → SaintFlow.
+Enable or reload **SaintFlow** under Community plugins. Existing Templater SF commands can remain enabled.
+
+## Vault compatibility
+
+- Tasks live in `4_Transform/Tasks`, Outputs in `4_Transform/Outputs`; Projects and Areas are ordinary notes directly under their type folders.
+- Reference notes use `type: resource`. Zettels use `maturity`, `source`, and `question`. Projects use `done_criteria` and `due`.
+- `project`, `area`, `source`, and `uses` are lists; `parent` is a single link. Subtasks record only `parent`, avoiding duplicate project counts. Subprojects inherit the parent's area.
+- Regular notes have no default prefix. Recall and review notes retain `N-` and `R-`. Archiving uses `archived: true`; legacy Archive paths are also recognized.
+- Templates are Resource, Recall, Weekly, and Closing, alongside the other standard types. Formatted date placeholders such as `{{date:YYYY-MM-DD}}` are supported. Matching templates are bundled as fallbacks.
 
 ## Commands
 
-| ID | Command palette | Available when | What it does |
-| --- | --- | --- | --- |
-| C1 | `C1 Capture` (ribbon icon) | Anywhere | One line of input → a file in `0_Sweep/`. Duplicates get a numeric suffix |
-| C2 | `C2 Arrange` | Active file is in `0_Sweep/` | Pick a type → type-specific input → merge template properties (body preserved) → apply the naming rule → move to its home folder |
-| C3 | `C3 Create in context` | Active file is a parent under 2.4 | Pick an allowed type → enter a title → relations recorded automatically → defaults → open the new note |
-| C4 | `C4 New project` / `C4 New area` | Anywhere | Create the container and its hub. Refused if the completion criterion is empty |
-| C5 | `C5 Set relation` | File has the relevant field | Fill `project`, `area`, `sources`, `uses` through a type-filtered picker |
-| C6 | `C6 Add Zettel link` | Active file is a Zettel | Append `- [[X]] — reason` to the links section. Refused if the reason is empty |
-| C7 | `C7 Change status` | Task, Project, Zettel, Output | Check the transition conditions. Status is unchanged if they are not met |
-| C8 | `C8 Start recall session` / `C8 Grade recall` | Session: anywhere. Grading: a recall Zettel | Create the session note, update `box`, `last_reviewed`, `last_result` and the retrieval log |
-| C9 | `C9 Close project` | Active file is a `P-` hub | Verdict → confirm `uses` → harvest `W-` notes → handle remaining Tasks → `done` → `R-종료-<name>` → archive the container |
-| C10 | `C10 Weekly review` | Anywhere | Create `R-YYYY-Www` → write the 2.3 check values into the "점검 스냅샷" section (+ the C20 report) |
-| C11 | `saintflow-new` code block | The note holding the block is the parent | Render buttons for the allowed types → run C3 |
-| C12 | `C12 Inbox mode` | `0_Sweep` is not empty | Open files one by one in creation order and present the decision sequence → two-minute rule / arrange / skip / delete → a processing summary |
-| C13 | `C13 Extract Zettel from Source` | Cursor on the "추출할 생각" checklist of a Source | Item text becomes the title candidate → create a seed Zettel → tick the item and replace it with a link |
-| C14 | `C14 Promote selection` | Text selected in a `W-` note | **Move** the selected text into a Zettel (a thought) or a Source (key content), leaving only a link behind |
-| C15 | `C15 Check rules` | Anywhere (also on startup / on rename, per settings) | Scan the vault → a list per rule → open or quick-fix each item |
-| C16 | `C16 Open SaintFlow panel` (ribbon icon) | Sidebar | Always-visible check counts; click for the list or the Bases view |
-| C17 | `C17 Open Home` | Automatic on startup (setting) | Make Home the active tab once the workspace has loaded |
-| C18 | `C18 Open hub` | A file inside a container, or the folder menu | Jump to the container's hub. Offer to create it if missing. Hubs are marked in the file explorer |
-| C19 | `C19 Migrate schema` | Run manually (announced when the version rises) | Compare the schema against frontmatter → preview → apply. Body untouched, idempotent |
-| C20 | `C20 Export check report` | Run manually, automatic during C10 | Write `9_System/reports/YYYY-MM-DD.json` |
+Existing C1–C20 command IDs remain stable.
 
-The `Show check snapshot` command creates no note; it shows the counts in a notice.
+| Commands | Behavior |
+| --- | --- |
+| C1 capture, C2 arrange, C12 inbox | Respect dispatch; preserve body, link, capture date and custom properties; add missing template sections. Exclude stage rooms. |
+| C3 context creation | Create eligible children, including subprojects and subtasks; allow direct creation outside a parent context. |
+| C4 containers, C5 relations, C7 status | Create flat Project/Area notes; use current statuses, list relations and Zettel maturity. |
+| C8 recall | Read question, append newly due targets once, update review metadata and write verdicts in the recall note. |
+| C9 closing | Open or create the Closing checklist. Completion and archiving remain explicit checklist actions. |
+| C10 weekly, C16 panel, C20 report | Share checks for open tasks and active subprojects, seeds aged at least 14 days, and finished outputs missing uses. |
+| C13 extraction, C14 promotion | Extract checklist thoughts from Resources; move selected Project/Area/legacy Working text into a Zettel or Resource. |
+| C18 parent/room | Follow parent, project, area, or the enclosing stage room. |
+| C19 migration | Preview and apply property migration without rewriting bodies or moving notes. |
 
-The file explorer context menu carries entries too: "Arrange" on files in `0_Sweep`,
-"Create here" on notes that can be parents, and "Open hub" on container folders.
-
-### C11 block syntax
+A C11 button block in a Project can use:
 
 ````markdown
 ```saintflow-new
-types: task, working, output, zettel, source
+types: task, project, output, resource, zettel
 ```
 ````
 
-`types` only accepts children that 2.4 of the design document allows for the parent type; anything
-else is rendered as an error message. The parent type is read from the `type` property of the note
-holding the block.
+## Upgrading older vaults
 
-| Parent | Allowed children |
-| --- | --- |
-| project | task, zettel, source, working, output, review-close |
-| area | task, project, zettel, source, working |
-| source | zettel |
-| zettel | zettel |
-| map | zettel |
+Schema v2 migrates source → resource, session → recall, review → weekly/closing, outcome → done_criteria, deadline → due, Zettel status → maturity, and sources → source. Scalar relations become lists. Existing nonempty destination values remain intact. C15 offers location fixes separately.
 
-### C15 checks
+Former default paths and prefixes are updated while custom settings are retained. Review migration previews before applying changes to older notes.
 
-| Rule | Example violation | Quick fix |
-| --- | --- | --- |
-| Type vs. home folder | `type: task` living outside 4_Transform | Move to its home folder |
-| Required properties | A Project with no `outcome` | Add the property, then open the file |
-| File name | Missing prefix, forbidden characters | Propose a conforming name |
-| Hub name | Hub file name differs from the container folder name; hub missing | Rename the hub (a missing hub is reported only) |
-| Container contents | A Task, Zettel or Source inside a container | Move to its home folder |
-| Folder depth | A subfolder inside a container (other than `_files`) | Reported only |
-| Relation integrity | An active Task pointing at an archived project, an unresolved link | Open the file |
-| Value range | A `status` outside the allowed values, a `box` outside 1–5 | Pick a value |
+## Tests
 
-The template folder is excluded from the checks: those files are skeletons with empty values by design.
+`npm test` runs pure-function tests and command integration tests with an Obsidian API double. `tests/manual-vault` contains starter templates, Bases, and rooms verified against the actual vault. `tests/fixture-vault` remains a legacy reference fixture.
 
-### C20 report schema
+For a smoke test inside the running Obsidian app, enable its CLI and run:
 
-```json
-{
-  "schema": "saintflow-report/1",
-  "generated": "2026-09-21",
-  "checks": [{ "key": "inbox", "title": "Inbox", "count": 1, "items": [{ "path": "...", "name": "...", "note": "..." }] }],
-  "violations": [{ "rule": "home", "ruleLabel": "Type vs. home folder", "path": "...", "name": "...", "message": "...", "fix": "move" }],
-  "totals": {
-    "checks": { "inbox": 1 },
-    "violations": { "home": 1 },
-    "checkTotal": 7,
-    "violationTotal": 9
-  }
-}
+```powershell
+$env:OBSIDIAN_CLI = "$env:LOCALAPPDATA\Programs\Obsidian\Obsidian.com"
+node tests/obsidian-smoke.mjs SaintFlow
 ```
 
-`key`, `rule` and `fix` are stable identifiers. `title`, `ruleLabel` and `message` are labels, so they
-come out in whatever language the plugin is running in.
+The smoke test drives actual command dialogs, creates uniquely named temporary notes, and deletes only those notes afterwards. Save important edits and close open dialogs before running it.
 
-## Layout
-
-```
-saintflow/
-├── main.ts                    command registration, index and event lifecycle
-├── src/
-│   ├── checks.ts              2.3 derived values, 1.7 recall verdict       (pure)
-│   ├── dates.ts               ISO dates and week numbers                   (pure)
-│   ├── naming.ts              3.5 file naming rules                        (pure)
-│   ├── links.ts               [[file name]] notation                       (pure)
-│   ├── sections.ts            2.5 reading and writing body sections        (pure)
-│   ├── model.ts               2.2 types, 2.4 parent/child matrix           (pure)
-│   ├── schema.ts              2.2 schema and check rules                   (pure)
-│   ├── config.ts              settings values and defaults                 (pure)
-│   ├── i18n.ts                UI language and the message table            (pure)
-│   ├── placement.ts           3.1 home folders, 3.5 file name generation   (pure)
-│   ├── lint.ts                C15 judgement rules                          (pure)
-│   ├── blocks/block-syntax.ts C11 block syntax                             (pure)
-│   ├── core.ts                the plugin surface the commands depend on
-│   ├── blocks/new-block.ts    C11 code block renderer
-│   ├── graph.ts               relation index and check computation
-│   ├── lint-vault.ts          C15 fact gathering and quick-fix application
-│   ├── relations.ts           note creation and relation recording
-│   ├── vault-io.ts            Obsidian API wrapper
-│   ├── templates.ts           template reading and built-in skeletons
-│   ├── settings.ts            5.5 settings tab
-│   ├── ui/modals.ts           input UI
-│   ├── views/panel.ts         C16 sidebar panel
-│   └── commands/              C1–C20
-└── tests/
-    ├── *.test.ts              unit tests for the pure functions, incl. the message table
-    └── fixture-vault/         6.2 fixture, seeded C15 violations, acceptance test procedure
-```
-
-Modules marked `(pure)` do not import `obsidian`. As 5.4 of the design document requires, the
-judgement rules are separated into pure functions so they can be unit tested.
-
-## Language
-
-The plugin UI follows Obsidian's own language setting. Korean and English ship today; any other
-language falls back to English, which is Obsidian's own default.
-
-- The language is read once, in `onload`, before commands are registered: `localStorage.language`
-  (where Obsidian keeps the setting), then moment's locale, then the browser language. Obsidian
-  reloads when you change its language, so the plugin picks the new one up with it.
-- `src/i18n.ts` holds the whole message table. The Korean source string is the key, so an untranslated
-  message falls back to Korean rather than to a missing-key placeholder.
-- **Only screen text is translated.** What ends up in the vault keeps the vocabulary the design
-  document fixed: section headings (`sections.ts`), template skeletons (`templates.ts`), the
-  `R-종료-` name (`placement.ts`), Bases view names (`panel.ts`), and every frontmatter key and value.
-  Translating those would break links, `findSection` and the C15 checks.
-- Notes the plugin generates — the weekly review snapshot, the recall session note, the C20 report's
-  labels — come out in the running language. C8 finds the `판정:` / `Verdict:` line of a session note
-  through every known translation, so grading still works if you switch languages mid-week.
-- To add a language: add a table to `TABLES` in `src/i18n.ts` and teach `normalizeLocale` its tag.
-  `tests/i18n.test.ts` then fails until every message used in the code has a translation, and fails
-  again if a translation is left behind when the Korean source changes.
-
-## Implementation notes
-
-- **Relations are written on the child only** (rule 8). The one exception is Map, where the parent
-  owns the links in its structure section (2.4).
-- **Frontmatter links are resolved directly via `getFirstLinkpathDest`.** Nothing relies on
-  frontmatter links showing up in `resolvedLinks` (5.4).
-- **The orphan verdict counts only links inside the links section.** Heading and link line positions
-  are read from `metadataCache`, so the body is not re-read to make the distinction.
-- **Files are moved with `fileManager.renameFile`,** which lets Obsidian update the links.
-- **C9 keeps its order.** Harvesting (promoting `W-` notes) comes first, archiving the container last
-  (rule 4).
-- **C10, C16 and C20 share one `computeSnapshot`,** so the three surfaces cannot disagree.
-- **C14 moves, it does not copy.** The selected text is removed from the original and only a link remains.
-- **C19 uses `processFrontMatter` exclusively.** It never touches the body, and values outside the
-  allowed set are reported rather than rewritten.
-- **It works without templates.** If `9_System/Templates` has no file, the built-in skeleton is used.
-
-## Settings
-
-| Setting | Default |
-| --- | --- |
-| Folder paths | Per 3.1 of the design document (plus reports at `9_System/reports`) |
-| Recall intervals | 1, 3, 7, 14, 30 |
-| `old_seed` threshold | 14 days |
-| File name prefixes | P-, A-, W-, O-, S-, M-, N-, R- |
-| Template folder | 9_System/Templates |
-| Open Home on startup | On |
-| Mark hubs in the file explorer | On |
-| Lint on startup | Off |
-| Lint on move / rename | Off |
-| Save a report during the weekly review | On |
-
-## Not done yet
-
-- V1–V8 of 6.1 are Bases behaviours that have to be verified inside Obsidian by hand. The plugin-side
-  computation is C10's job and is independent of 6.1.
-- The acceptance tests in 6.3 and in the fixture README require an open Obsidian, so they have not been run.
-- Of the open questions in chapter 9, the `context` property on Task was not added.
-- `KEY_RENAMES` (the C19 key rename table) is empty: no key has been renamed yet.
+The UI supports Korean and English; stored properties and template sections follow the vault's vocabulary.

@@ -1,18 +1,18 @@
 // C8 회상 세션과 채점(설계안 1.7, 5.3).
-// 답안은 세션 노트에 씁니다. Zettel에는 판정 한 줄만 남깁니다.
+// 답안과 판정은 세션 노트에, Zettel에는 회상 속성만 기록합니다.
 
 import { Notice, TFile } from "obsidian";
-import { RecallResult, gradeBox, nextReview, recallLogLine } from "../checks";
+import { RecallResult, gradeBox, nextReview } from "../checks";
 import type { SaintFlowCore } from "../core";
 import { todayISO } from "../dates";
 import { dueTodayZettels } from "../graph";
+import { t } from "../i18n";
 import { toLink } from "../links";
 import { homeFolderFor } from "../relations";
-import { SECTION, appendToSection, findSection, firstRecallQuestion } from "../sections";
+import { appendToSection, findSection, firstRecallQuestion } from "../sections";
 import { templateContent } from "../templates";
 import { pickFile, pickOne, promptRequired, promptText } from "../ui/modals";
-import { createNote, fileByBaseName, readBody, setFrontMatter, typeOf, updateBody } from "../vault-io";
-import { allTranslations, t } from "../i18n";
+import { createNote, fileByBaseName, frontMatterOf, readBody, setFrontMatter, typeOf, updateBody } from "../vault-io";
 
 /** C8-a 세션: 오늘 복습할 Zettel마다 질문과 답안 칸을 만듭니다. */
 export async function recallSessionCommand(core: SaintFlowCore): Promise<TFile | null> {
@@ -20,25 +20,15 @@ export async function recallSessionCommand(core: SaintFlowCore): Promise<TFile |
 	const name = `${core.settings.prefixes.session}${today}`;
 	const due = dueTodayZettels(core.app, core.settings, core.index, today);
 
-	const existing = fileByBaseName(core.app, name);
-	if (existing) {
-		await core.app.workspace.getLeaf(false).openFile(existing);
-		new Notice(t("오늘 세션이 이미 있습니다. 복습 대상 {0}건.", due.length));
-		return existing;
-	}
-
-	if (due.length === 0) {
-		new Notice(t("오늘 복습할 Zettel이 없습니다."));
-		return null;
-	}
-
-	const template = await templateContent(core.app, core.settings, "session", { date: today, title: name });
-	const file = await createNote(core.app, homeFolderFor(core.settings, "session"), name, template);
+	const path = `${homeFolderFor(core.settings, "recall")}/${name}.md`;
+	const existing = core.app.vault.getAbstractFileByPath(path);
+	const template = await templateContent(core.app, core.settings, "recall", { date: today, title: name });
+	const file = existing instanceof TFile ? existing : await createNote(core.app, homeFolderFor(core.settings, "recall"), name, template);
 
 	const blocks: string[] = [];
 	for (const zettel of due) {
 		const body = await readBody(core.app, zettel);
-		const question = firstRecallQuestion(body);
+		const question = String(frontMatterOf(core.app, zettel).question ?? "").trim() || firstRecallQuestion(body);
 		blocks.push(
 			[
 				`## ${toLink(zettel.basename)}`,
@@ -52,9 +42,18 @@ export async function recallSessionCommand(core: SaintFlowCore): Promise<TFile |
 		);
 	}
 
-	await updateBody(core.app, file, (body) => stripSampleSection(body).trimEnd() + "\n\n" + blocks.join("\n"));
+	await updateBody(core.app, file, (body) => {
+		let next = stripSampleSection(body);
+		const missing = blocks.filter((_block, index) => !findSection(next, toLink(due[index].basename)));
+		if (missing.length === 0) return next;
+		const judge = findSection(next, "판정");
+		const lines = next.split("\n");
+		if (judge) lines.splice(judge.headingLine, 0, missing.join("\n"));
+		else lines.push("", ...missing, "## 판정", "");
+		return lines.join("\n");
+	});
 	await setFrontMatter(core.app, file, (fm) => {
-		fm.type = "session";
+		fm.type = "recall";
 		fm.date = today;
 	});
 	core.index.invalidate();
@@ -72,7 +71,7 @@ function stripSampleSection(body: string): string {
 	return [...lines.slice(0, range.headingLine), ...lines.slice(range.end)].join("\n");
 }
 
-/** C8-b 채점: box, last_reviewed, last_result, 인출 기록을 한 번에 갱신합니다. */
+/** C8-b 채점: 회상 속성과 세션 노트의 판정을 갱신합니다. */
 export async function gradeRecallCommand(core: SaintFlowCore, target?: TFile): Promise<void> {
 	const zettel = await resolveZettel(core, target);
 	if (!zettel) return;
@@ -116,9 +115,7 @@ export async function gradeRecallCommand(core: SaintFlowCore, target?: TFile): P
 		fm.last_result = result;
 	});
 
-	const line = recallLogLine(today, result, note);
-	await updateBody(core.app, zettel, (body) => appendToSection(body, SECTION.log, line));
-	await fillSessionVerdict(core, zettel.basename, today, `${result}${note ? ` — ${note}` : ""}`);
+	await fillSessionVerdict(core, zettel.basename, today, `${result}${note ? ` — ${note}` : ""} · box ${newBox}`);
 	core.index.invalidate();
 
 	const due = nextReview({ box: newBox, last_reviewed: today }, today, core.settings.recallIntervals);
@@ -130,7 +127,7 @@ async function resolveZettel(core: SaintFlowCore, target?: TFile): Promise<TFile
 	if (file && typeOf(core.app, file) === "zettel") return file;
 
 	// 세션 노트에서 실행하면 그 세션에 올라온 Zettel 중에서 고릅니다.
-	if (file && typeOf(core.app, file) === "session") {
+	if (file && typeOf(core.app, file) === "recall") {
 		const body = await readBody(core.app, file);
 		const names = [...body.matchAll(/^##\s+\[\[([^\]]+)\]\]/gm)].map((m) =>
 			m[1].split("|")[0].split("#")[0].trim()
@@ -143,6 +140,7 @@ async function resolveZettel(core: SaintFlowCore, target?: TFile): Promise<TFile
 
 	const recalls = core.index
 		.allOfType("zettel")
+		.filter((f) => !core.index.isArchivedFile(f))
 		.filter((f) => (core.app.metadataCache.getFileCache(f)?.frontmatter?.recall as boolean) === true);
 	if (recalls.length === 0) {
 		new Notice(t("recall: true인 Zettel이 없습니다."));
@@ -151,29 +149,18 @@ async function resolveZettel(core: SaintFlowCore, target?: TFile): Promise<TFile
 	return await pickFile(core.app, recalls, t("채점할 Zettel"));
 }
 
-/** 오늘 세션 노트의 빈 `판정:` 줄만 채웁니다. 사용자가 쓴 답안은 건드리지 않습니다. */
+/** 회상 노트의 판정 섹션에 결과를 추가합니다. 기존 답안은 유지합니다. */
 async function fillSessionVerdict(
 	core: SaintFlowCore,
 	zettelName: string,
 	today: string,
 	verdict: string
 ): Promise<void> {
-	const session = fileByBaseName(core.app, `${core.settings.prefixes.session}${today}`);
-	if (!session) return;
-
-	await updateBody(core.app, session, (body) => {
-		const range = findSection(body, `[[${zettelName}]]`);
-		if (!range) return body;
-		const lines = body.split("\n");
-		// 세션을 만든 뒤에 언어를 바꿨을 수 있으므로 판정 줄은 모든 번역으로 찾습니다.
-		const labels = allTranslations("판정:");
-		for (let i = range.start; i < range.end; i++) {
-			const label = labels.find((l) => lines[i].startsWith(l));
-			if (!label) continue;
-			if (lines[i].slice(label.length).trim() !== "") return body;
-			lines[i] = t("판정: {0}", verdict);
-			return lines.join("\n");
-		}
-		return body;
-	});
+	const active = core.app.workspace.getActiveFile();
+	const name = `${core.settings.prefixes.session}${today}`;
+	const folder = homeFolderFor(core.settings, "recall");
+	const existing = core.app.vault.getAbstractFileByPath(`${folder}/${name}.md`);
+	const session = active && typeOf(core.app, active) === "recall" ? active : existing instanceof TFile ? existing :
+		await createNote(core.app, folder, name, await templateContent(core.app, core.settings, "recall", { date: today, title: name }));
+	await updateBody(core.app, session, body => appendToSection(body, "판정", `- ${toLink(zettelName)} ${verdict}`));
 }

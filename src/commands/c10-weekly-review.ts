@@ -4,13 +4,13 @@ import { Notice, TFile } from "obsidian";
 import type { SaintFlowCore } from "../core";
 import { isoWeekName, todayISO } from "../dates";
 import { SnapshotGroup, computeSnapshot } from "../graph";
+import { t } from "../i18n";
 import { toLink } from "../links";
 import { homeFolderFor } from "../relations";
 import { SECTION, replaceSection } from "../sections";
 import { templateContent } from "../templates";
 import { createNote, fileByBaseName, setFrontMatter, updateBody } from "../vault-io";
 import { writeReport } from "./c20-report";
-import { t } from "../i18n";
 
 export async function weeklyReviewCommand(core: SaintFlowCore): Promise<TFile | null> {
 	const today = todayISO();
@@ -18,11 +18,10 @@ export async function weeklyReviewCommand(core: SaintFlowCore): Promise<TFile | 
 
 	let file = fileByBaseName(core.app, name);
 	if (!file) {
-		const template = await templateContent(core.app, core.settings, "review", { date: today, title: name });
-		file = await createNote(core.app, homeFolderFor(core.settings, "review"), name, template);
+		const template = await templateContent(core.app, core.settings, "weekly", { date: today, title: name });
+		file = await createNote(core.app, homeFolderFor(core.settings, "weekly"), name, template);
 		await setFrontMatter(core.app, file, (fm) => {
-			fm.type = "review";
-			fm.cycle = "weekly";
+			fm.type = "weekly";
 			fm.date = today;
 		});
 	}

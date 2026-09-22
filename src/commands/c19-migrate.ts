@@ -3,25 +3,23 @@
 
 import { Modal, Notice, Setting, TFile } from "obsidian";
 import type { SaintFlowCore } from "../core";
-import {
-	EntitySchema,
-	KEY_RENAMES,
-	SCHEMA_VERSION,
-	emptyValueFor,
-	isEmptyValue,
-	missingKeys,
-	schemaFor,
-	valueProblems,
-} from "../schema";
-import { SaintType } from "../model";
-import { frontMatterOf, setFrontMatter } from "../vault-io";
+import { isoFromTimestamp } from "../dates";
 import { t } from "../i18n";
+import { frontmatterMigration } from "../migration";
+import { SaintType } from "../model";
+import {
+	SCHEMA_VERSION,
+	schemaFor
+} from "../schema";
+import { isContentNote } from "../scope";
+import { frontMatterOf, isArchived, setFrontMatter } from "../vault-io";
 
 export interface NoteChange {
 	file: TFile;
 	type: SaintType;
 	/** 빈 값으로 채울 키. */
 	addKeys: string[];
+	values: Record<string, unknown>;
 	/** 이전 이름 → 새 이름. */
 	renames: [string, string][];
 	/** 자동으로 고치지 않고 보고만 하는 값 문제. */
@@ -37,36 +35,27 @@ export interface MigrationPlan {
 
 /** 바뀔 내용을 계산합니다. 파일은 건드리지 않습니다. */
 export function planMigration(core: SaintFlowCore): MigrationPlan {
-	const skip = core.settings.folders.templates;
 	const changes: NoteChange[] = [];
 	const reportsOnly: NoteChange[] = [];
 	let addCount = 0;
 	let renameCount = 0;
 
 	for (const file of core.app.vault.getMarkdownFiles()) {
-		if (file.path === skip || file.path.startsWith(skip + "/")) continue;
 		const fm = frontMatterOf(core.app, file);
-		const schema = schemaFor(fm.type);
-		if (!schema) continue;
-
-		const renames = plannedRenames(schema, fm);
-		// 이름이 바뀐 키를 먼저 옮긴다고 보고 남은 누락 키를 셉니다.
-		const afterRename = { ...fm };
-		for (const [from, to] of renames) {
-			afterRename[to] = afterRename[from];
-			delete afterRename[from];
-		}
-		const addKeys = missingKeys(schema, afterRename);
-		const reports = valueProblems(schema, fm).map((p) => p.message);
+		if (!isContentNote(core.settings, file.path, fm)) continue;
+		const migration = frontmatterMigration(fm, isoFromTimestamp(file.stat.ctime), isArchived(file.path, core.settings.folders.archive, fm));
+		if (!migration) continue;
+		const { renames, addKeys, reports, values } = migration;
 
 		const change: NoteChange = {
 			file,
-			type: schema.type,
+			type: migration.type,
+			values,
 			addKeys,
 			renames,
 			reports,
 		};
-		if (addKeys.length > 0 || renames.length > 0) {
+		if (Object.keys(values).length > 0 || renames.length > 0) {
 			changes.push(change);
 			addCount += addKeys.length;
 			renameCount += renames.length;
@@ -78,38 +67,20 @@ export function planMigration(core: SaintFlowCore): MigrationPlan {
 	return { changes, reportsOnly, addCount, renameCount };
 }
 
-function plannedRenames(schema: EntitySchema, fm: Record<string, unknown>): [string, string][] {
-	const table = KEY_RENAMES[schema.type] ?? {};
-	const out: [string, string][] = [];
-	for (const [from, to] of Object.entries(table)) {
-		if (!(from in fm)) continue;
-		// 새 키에 이미 값이 있으면 덮지 않습니다.
-		if (to in fm && !isEmptyValue(fm[to])) continue;
-		out.push([from, to]);
-	}
-	return out;
-}
-
 /** 계획을 적용합니다. 같은 계획을 다시 적용하면 변경이 0건입니다(멱등). */
 export async function applyMigration(core: SaintFlowCore, plan: MigrationPlan): Promise<string[]> {
 	const log: string[] = [];
 	for (const change of plan.changes) {
 		const schema = schemaFor(change.type);
 		if (!schema) continue;
-		await setFrontMatter(core.app, change.file, (fm) => {
-			for (const [from, to] of change.renames) {
-				if (!(from in fm)) continue;
-				fm[to] = fm[from];
-				delete fm[from];
-			}
-			for (const key of change.addKeys) {
-				if (key in fm) continue;
-				const field = schema.fields.find((f) => f.key === key);
-				if (!field) continue;
-				fm[key] = emptyValueFor(field);
-			}
+		await setFrontMatter(core.app, change.file, fm => {
+			// Recompute from current metadata, so edits after the preview are preserved.
+			const fresh = frontmatterMigration(fm, isoFromTimestamp(change.file.stat.ctime), isArchived(change.file.path, core.settings.folders.archive, fm));
+			if (!fresh) return;
+			for (const [from] of fresh.renames) delete fm[from];
+			Object.assign(fm, fresh.next);
 		});
-		const parts: string[] = [];
+		const parts: string[] = Object.entries(change.values).filter(([key]) => !change.addKeys.includes(key)).map(([key, value]) => `${key}: ${JSON.stringify(value)}`);
 		if (change.renames.length > 0) {
 			parts.push(t("이름 변경 {0}", change.renames.map(([a, b]) => `${a}→${b}`).join(", ")));
 		}
@@ -147,18 +118,18 @@ class MigrationModal extends Modal {
 				changes.length === 0
 					? t("바꿀 노트가 없습니다. 본문은 어떤 경우에도 건드리지 않습니다.")
 					: t(
-							"노트 {0}개에서 속성 {1}개를 추가하고 키 {2}개의 이름을 바꿉니다. 본문은 건드리지 않습니다.",
-							changes.length,
-							addCount,
-							renameCount
-						),
+						"노트 {0}개에서 속성 {1}개를 추가하고 키 {2}개의 이름을 바꿉니다. 본문은 건드리지 않습니다.",
+						changes.length,
+						addCount,
+						renameCount
+					),
 		});
 
 		if (changes.length > 0) {
 			const list = contentEl.createDiv({ cls: "saintflow-lint-list" });
 			list.createEl("h4", { text: t("변경 미리보기 ({0})", changes.length) });
 			for (const change of changes.slice(0, 50)) {
-				const parts: string[] = [];
+				const parts: string[] = Object.entries(change.values).filter(([key]) => !change.addKeys.includes(key)).map(([key, value]) => `${key}: ${JSON.stringify(value)}`);
 				if (change.renames.length > 0) {
 					parts.push(change.renames.map(([a, b]) => `${a} → ${b}`).join(", "));
 				}

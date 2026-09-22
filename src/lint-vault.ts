@@ -1,8 +1,9 @@
 // C15의 vault 쪽 절반. 사실을 모아 lint.ts에 넘기고, 빠른 수정을 Obsidian API로 적용합니다.
 
 import { App, Notice, TFile, TFolder } from "obsidian";
-import type { SaintFlowCore } from "./core";
 import type { SaintFlowSettings } from "./config";
+import type { SaintFlowCore } from "./core";
+import { t } from "./i18n";
 import { linkTargets } from "./links";
 import {
 	FolderFacts,
@@ -15,8 +16,8 @@ import {
 import { RELATION_FIELDS, RelationField } from "./model";
 import { folderOf } from "./naming";
 import { emptyValueFor, schemaFor } from "./schema";
+import { isContentNote } from "./scope";
 import { frontMatterOf, isArchived, moveNote, resolveLink, setFrontMatter } from "./vault-io";
-import { t } from "./i18n";
 
 const LINK_FIELDS = Object.keys(RELATION_FIELDS) as RelationField[];
 
@@ -42,7 +43,7 @@ export function noteFacts(app: App, settings: SaintFlowSettings, file: TFile): N
 				field,
 				target,
 				resolved: !!dest,
-				targetArchived: dest ? isArchived(dest.path, settings.folders.archive) : false,
+				targetArchived: dest ? isArchived(dest.path, settings.folders.archive, frontMatterOf(app, dest)) : false,
 			});
 		}
 	}
@@ -64,13 +65,13 @@ export function noteFacts(app: App, settings: SaintFlowSettings, file: TFile): N
 		folder: file.parent?.path === "/" ? "" : (file.parent?.path ?? ""),
 		type: typeof fm.type === "string" ? fm.type : null,
 		fm,
-		archived: isArchived(file.path, settings.folders.archive),
+		archived: isArchived(file.path, settings.folders.archive, fm),
 		container: containerOf(settings, file.path),
 		links,
 	};
 }
 
-function folderFacts(app: App, settings: SaintFlowSettings, folder: TFolder): FolderFacts {
+function folderFacts(_app: App, settings: SaintFlowSettings, folder: TFolder): FolderFacts {
 	const parent = folder.parent?.path === "/" ? "" : (folder.parent?.path ?? "");
 	const isContainer = parent === settings.folders.projects || parent === settings.folders.areas;
 	const hasHub = folder.children.some(
@@ -93,10 +94,9 @@ function folderFacts(app: App, settings: SaintFlowSettings, folder: TFolder): Fo
 export function lintVault(core: SaintFlowCore): Violation[] {
 	const { app, settings } = core;
 	const out: Violation[] = [];
-	const skip = settings.folders.templates;
 
 	for (const file of app.vault.getMarkdownFiles()) {
-		if (file.path === skip || file.path.startsWith(skip + "/")) continue;
+		if (!isContentNote(settings, file.path, frontMatterOf(app, file))) continue;
 		out.push(...checkNote(noteFacts(app, settings, file), settings));
 	}
 
@@ -109,8 +109,7 @@ export function lintVault(core: SaintFlowCore): Violation[] {
 
 /** 파일 하나만 검사합니다. 이동·이름 변경 이벤트에서 씁니다. */
 export function lintFile(core: SaintFlowCore, file: TFile): Violation[] {
-	const skip = core.settings.folders.templates;
-	if (file.path === skip || file.path.startsWith(skip + "/")) return [];
+	if (!isContentNote(core.settings, file.path, frontMatterOf(core.app, file))) return [];
 	return checkNote(noteFacts(core.app, core.settings, file), core.settings);
 }
 

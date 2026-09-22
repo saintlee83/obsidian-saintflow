@@ -1,0 +1,134 @@
+filters:
+  and:
+    - file.inFolder("4_Transform/Tasks")
+formulas:
+  rank: if(!status, 0, if(status == "in progress", 1, if(status == "next", 2, if(status == "waiting", 3, if(status == "someday", 4, if(status == "done", 5, 6))))))
+  due_label: if(due && status != "done" && status != "dropped", date(due).relative(), "")
+  today_flag: status != "done" && status != "dropped" && status != "someday" && archived != true && ((scheduled && date(scheduled) <= today()) || (due && date(due) <= today()))
+  sub_total: file.backlinks.filter(value.asFile().properties.type == "task").length
+  sub_closed: file.backlinks.filter(value.asFile().properties.type == "task" && (value.asFile().properties.status == "done" || value.asFile().properties.status == "dropped")).length
+  sub_progress: if(formula.sub_total > 0, if(formula.sub_closed >= formula.sub_total, "✓ ", "") + formula.sub_closed.toString() + "/" + formula.sub_total.toString(), "")
+properties:
+  file.name:
+    displayName: 이름
+  status:
+    displayName: 상태
+  project:
+    displayName: Project
+  area:
+    displayName: Area
+  parent:
+    displayName: 상위 Task
+  scheduled:
+    displayName: 예정일
+  due:
+    displayName: 마감일
+  waiting_on:
+    displayName: 대기 대상
+  formula.due_label:
+    displayName: 마감
+  formula.sub_progress:
+    displayName: 하위 진행
+  file.mtime:
+    displayName: 수정
+views:
+  - type: table
+    name: 다음 행동
+    filters:
+      and:
+        - archived != true
+        - or:
+            - status == "next"
+            - status == "in progress"
+            - "!status"
+    order:
+      - file.name
+      - status
+      - formula.due_label
+      - formula.sub_progress
+      - parent
+      - project
+      - area
+    sort:
+      - property: status
+        direction: ASC
+      - property: formula.rank
+        direction: ASC
+      - property: due
+        direction: ASC
+  - type: table
+    name: 오늘
+    filters:
+      and:
+        - formula.today_flag == true
+    order:
+      - file.name
+      - status
+      - formula.due_label
+      - project
+    sort:
+      - property: due
+        direction: ASC
+  - type: table
+    name: 대기
+    filters:
+      and:
+        - status == "waiting"
+        - archived != true
+    order:
+      - file.name
+      - waiting_on
+      - project
+      - formula.due_label
+    sort:
+      - property: due
+        direction: ASC
+  - type: table
+    name: 언젠가
+    filters:
+      and:
+        - status == "someday"
+        - archived != true
+    order:
+      - file.name
+      - project
+      - area
+  - type: table
+    name: 완료
+    filters:
+      and:
+        - archived != true
+        - or:
+            - status == "done"
+            - status == "dropped"
+    order:
+      - file.name
+      - status
+      - project
+      - file.mtime
+    sort:
+      - property: file.mtime
+        direction: DESC
+  - type: table
+    name: 연결됨
+    filters:
+      and:
+        - file.hasLink(this.file)
+        - archived != true
+    order:
+      - file.name
+      - status
+      - formula.due_label
+      - formula.sub_progress
+    sort:
+      - property: formula.rank
+        direction: ASC
+  - type: table
+    name: 보관
+    filters:
+      and:
+        - archived == true
+    order:
+      - file.name
+      - status
+      - project

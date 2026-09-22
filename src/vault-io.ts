@@ -3,9 +3,9 @@
 // Node API를 쓰지 않으므로 모바일에서도 동작합니다.
 
 import { App, TFile, TFolder, normalizePath } from "obsidian";
+import { t } from "./i18n";
 import { baseNameOf, folderOf, joinPath, uniqueName } from "./naming";
 import { splitFrontMatter } from "./sections";
-import { t } from "./i18n";
 
 export async function ensureFolder(app: App, path: string): Promise<void> {
 	const clean = normalizePath(path);
@@ -101,7 +101,8 @@ export async function readBody(app: App, file: TFile): Promise<string> {
 }
 
 /** 보관 판정: 경로가 Archive 폴더로 시작하면 보관된 것으로 봅니다(설계안 5.4). */
-export function isArchived(path: string, archiveRoot: string): boolean {
+export function isArchived(path: string, archiveRoot: string, fm: Record<string, unknown> = {}): boolean {
+	if (fm.archived === true) return true;
 	const root = normalizePath(archiveRoot);
 	return path === root || path.startsWith(root + "/");
 }
@@ -112,7 +113,7 @@ export function resolveLink(app: App, target: string, sourcePath: string): TFile
 }
 
 /** 컨테이너 폴더: 폴더와 같은 이름의 허브 노트를 가진 폴더입니다(설계안 3.3). */
-export function containerFolderOf(app: App, hub: TFile): TFolder | null {
+export function containerFolderOf(_app: App, hub: TFile): TFolder | null {
 	const parent = hub.parent;
 	if (parent instanceof TFolder && parent.name === hub.basename) return parent;
 	return null;
@@ -122,7 +123,7 @@ export function fileByBaseName(app: App, name: string): TFile | null {
 	return app.vault.getMarkdownFiles().find((f) => f.basename === name) ?? null;
 }
 
-export function childrenOfFolder(app: App, folder: TFolder): TFile[] {
+export function childrenOfFolder(_app: App, folder: TFolder): TFile[] {
 	return folder.children.filter((c): c is TFile => c instanceof TFile && c.extension === "md");
 }
 

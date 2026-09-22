@@ -61,10 +61,10 @@ export function recallLogLine(date: string, result: RecallResult, note: string):
 	return trimmed ? `- ${date} ${result} — ${trimmed}` : `- ${date} ${result}`;
 }
 
-/** stalled: status = active이고 이 프로젝트를 가리키는 status = next인 미보관 Task가 0개. */
-export function isStalled(project: { status?: unknown; archived?: boolean }, nextTaskCount: number): boolean {
+/** active 프로젝트에 열린 Task와 active 하위 프로젝트가 모두 없으면 멈춤입니다. */
+export function isStalled(project: { status?: unknown; archived?: boolean }, nextTaskCount: number, activeChildCount = 0): boolean {
 	if (project.archived) return false;
-	return project.status === "active" && nextTaskCount === 0;
+	return project.status === "active" && nextTaskCount === 0 && activeChildCount === 0;
 }
 
 /** orphan_zettel: 연결 섹션의 나가는 Zettel 링크와 들어오는 Zettel 링크가 모두 없음. */
@@ -72,7 +72,7 @@ export function isOrphanZettel(outgoing: number, incoming: number): boolean {
 	return outgoing === 0 && incoming === 0;
 }
 
-/** old_seed: status = seed이고 생성 후 임계일 초과. */
+/** maturity = seed이고 생성 후 임계일 이상이면 오래된 seed입니다. */
 export function isOldSeed(
 	status: unknown,
 	createdISO: string,
@@ -82,7 +82,7 @@ export function isOldSeed(
 	if (status !== "seed") return false;
 	const age = diffDays(createdISO, today);
 	if (Number.isNaN(age)) return false;
-	return age > thresholdDays;
+	return age >= thresholdDays;
 }
 
 /** output_without_uses: uses가 비어 있음. */

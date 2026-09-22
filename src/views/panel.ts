@@ -4,20 +4,20 @@
 import { ItemView, TFile, WorkspaceLeaf, setIcon } from "obsidian";
 import type { SaintFlowCore } from "../core";
 import { SnapshotGroup, computeSnapshot } from "../graph";
-import { lintVault } from "../lint-vault";
 import { t } from "../i18n";
+import { lintVault } from "../lint-vault";
 
 export const SAINTFLOW_VIEW = "saintflow-panel";
 
 /** 점검별로 열어 줄 Bases 보기입니다. 파일이 없으면 버튼을 숨깁니다. */
-const BASE_VIEW: Record<string, { file: string; view: string }> = {
-	inbox: { file: "Checks.base", view: "수집함" },
-	waiting: { file: "Checks.base", view: "대기 중" },
-	stalled: { file: "Projects.base", view: "멈춘 프로젝트" },
-	orphan: { file: "Checks.base", view: "연결 없는 Zettel" },
-	old_seed: { file: "Checks.base", view: "오래된 seed" },
-	no_uses: { file: "Checks.base", view: "uses 없는 결과물" },
-	due_today: { file: "Recall.base", view: "오늘 복습" },
+export const BASE_VIEW: Record<string, { file: string; view: string }> = {
+	inbox: { file: "Inbox.base", view: "수집함" },
+	waiting: { file: "Tasks.base", view: "대기" },
+	stalled: { file: "Projects.base", view: "멈춤" },
+	orphan: { file: "Knowledge.base", view: "연결 없음" },
+	old_seed: { file: "Knowledge.base", view: "seed 점검" },
+	no_uses: { file: "Outputs.base", view: "점검" },
+	due_today: { file: "Knowledge.base", view: "오늘 회상" },
 };
 
 export class SaintFlowPanel extends ItemView {
@@ -108,7 +108,7 @@ export class SaintFlowPanel extends ItemView {
 			setIcon(btn, "table");
 			btn.addEventListener("click", async (ev) => {
 				ev.stopPropagation();
-				await this.app.workspace.getLeaf(false).openFile(resolved);
+				await this.app.workspace.openLinkText(`${resolved.path}#${base.view}`, "", false);
 			});
 		}
 

@@ -17,14 +17,6 @@ import {
 } from "obsidian";
 import { registerNewBlock } from "./src/blocks/new-block";
 import { captureCommand } from "./src/commands/c1-capture";
-import { arrangeCommand } from "./src/commands/c2-arrange";
-import { createInContextCommand } from "./src/commands/c3-create-in-context";
-import { newAreaCommand, newProjectCommand } from "./src/commands/c4-new-container";
-import { setRelationCommand } from "./src/commands/c5-set-relation";
-import { linkZettelCommand } from "./src/commands/c6-link-zettel";
-import { statusCommand } from "./src/commands/c7-status";
-import { gradeRecallCommand, recallSessionCommand } from "./src/commands/c8-recall";
-import { projectCloseCommand } from "./src/commands/c9-project-close";
 import { weeklyReviewCommand } from "./src/commands/c10-weekly-review";
 import { inboxCommand } from "./src/commands/c12-inbox";
 import { canExtract, extractZettelCommand } from "./src/commands/c13-extract-zettel";
@@ -33,15 +25,24 @@ import { lintCommand, lintFileAndNotify, lintOnStartup } from "./src/commands/c1
 import { openHomeCommand, openHomeOnStartup } from "./src/commands/c17-open-home";
 import { decorateHubs, isContainerFolder, openHubCommand } from "./src/commands/c18-open-hub";
 import { migrateCommand, noticeIfOutdated } from "./src/commands/c19-migrate";
+import { arrangeCommand } from "./src/commands/c2-arrange";
 import { reportCommand } from "./src/commands/c20-report";
+import { createInContextCommand } from "./src/commands/c3-create-in-context";
+import { newAreaCommand, newProjectCommand } from "./src/commands/c4-new-container";
+import { setRelationCommand } from "./src/commands/c5-set-relation";
+import { linkZettelCommand } from "./src/commands/c6-link-zettel";
+import { statusCommand } from "./src/commands/c7-status";
+import { gradeRecallCommand, recallSessionCommand } from "./src/commands/c8-recall";
+import { projectCloseCommand } from "./src/commands/c9-project-close";
 import { SaintFlowSettings, mergeSettings } from "./src/config";
 import type { SaintFlowCore } from "./src/core";
 import { SaintFlowIndex, computeSnapshot } from "./src/graph";
-import { isContextParent } from "./src/model";
-import { SaintFlowSettingTab } from "./src/settings";
-import { SAINTFLOW_VIEW, SaintFlowPanel } from "./src/views/panel";
-import { typeOf } from "./src/vault-io";
 import { detectLocale, setLocale, t } from "./src/i18n";
+import { isContextParent } from "./src/model";
+import { isInboxNote } from "./src/scope";
+import { SaintFlowSettingTab } from "./src/settings";
+import { frontMatterOf, typeOf } from "./src/vault-io";
+import { SAINTFLOW_VIEW, SaintFlowPanel } from "./src/views/panel";
 
 export default class SaintFlowPlugin extends Plugin implements SaintFlowCore {
 	settings!: SaintFlowSettings;
@@ -142,7 +143,7 @@ export default class SaintFlowPlugin extends Plugin implements SaintFlowCore {
 		this.addCommand({
 			id: "set-status",
 			name: t("C7 상태 전환"),
-			checkCallback: this.activeTypeCheck(["task", "project", "zettel", "output"], () =>
+			checkCallback: this.activeTypeCheck(["task", "project", "area", "resource", "zettel", "output"], () =>
 				statusCommand(this)
 			),
 		});
@@ -175,10 +176,9 @@ export default class SaintFlowPlugin extends Plugin implements SaintFlowCore {
 			id: "inbox",
 			name: t("C12 Inbox 처리 모드"),
 			checkCallback: (checking) => {
-				const sweep = this.settings.folders.sweep;
 				const ok = this.app.vault
 					.getMarkdownFiles()
-					.some((f) => f.path === sweep || f.path.startsWith(sweep + "/"));
+					.some((f) => isInboxNote(this.settings, f.path, frontMatterOf(this.app, f)));
 				if (checking) return ok;
 				if (ok) void this.run(() => inboxCommand(this));
 				return ok;
@@ -187,7 +187,7 @@ export default class SaintFlowPlugin extends Plugin implements SaintFlowCore {
 
 		this.addCommand({
 			id: "extract-zettel",
-			name: t("C13 Source에서 Zettel 추출"),
+			name: t("C13 Resource에서 Zettel 추출"),
 			editorCheckCallback: (checking, editor: Editor, view) => {
 				const file = view instanceof MarkdownView ? view.file : null;
 				const ok = canExtract(this.app, file, editor);
@@ -229,7 +229,7 @@ export default class SaintFlowPlugin extends Plugin implements SaintFlowCore {
 
 		this.addCommand({
 			id: "open-hub",
-			name: t("C18 허브 열기"),
+			name: t("C18 부모·방 노트 열기"),
 			callback: () => void this.run(() => openHubCommand(this)),
 		});
 
@@ -258,8 +258,7 @@ export default class SaintFlowPlugin extends Plugin implements SaintFlowCore {
 
 	private activeIsInSweep(): boolean {
 		const file = this.app.workspace.getActiveFile();
-		const sweep = this.settings.folders.sweep;
-		return !!file && (file.path === sweep || file.path.startsWith(sweep + "/"));
+		return !!file && isInboxNote(this.settings, file.path, frontMatterOf(this.app, file));
 	}
 
 	private activeTypeCheck(types: string[], run: () => Promise<unknown>) {
@@ -279,16 +278,14 @@ export default class SaintFlowPlugin extends Plugin implements SaintFlowCore {
 					if (!isContainerFolder(this, file)) return;
 					menu.addItem((item) =>
 						item
-							.setTitle(t("SaintFlow: 허브 열기"))
+							.setTitle(t("SaintFlow: 방 노트 열기"))
 							.setIcon("home")
 							.onClick(() => void this.run(() => openHubCommand(this, file)))
 					);
 					return;
 				}
 				if (!(file instanceof TFile) || file.extension !== "md") return;
-
-				const sweep = this.settings.folders.sweep;
-				if (file.path === sweep || file.path.startsWith(sweep + "/")) {
+				if (isInboxNote(this.settings, file.path, frontMatterOf(this.app, file))) {
 					menu.addItem((item) =>
 						item
 							.setTitle(t("SaintFlow: 분류"))

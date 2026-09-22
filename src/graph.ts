@@ -10,15 +10,15 @@ import {
 	isStalled,
 	nextReview,
 } from "./checks";
-import { isoFromTimestamp, todayISO } from "./dates";
-import { linkTargets } from "./links";
-import { RelationField, SaintType } from "./model";
-import { SECTION } from "./sections";
 import type { SaintFlowSettings } from "./config";
-import { frontMatterOf, isArchived, resolveLink } from "./vault-io";
+import { isoFromTimestamp, todayISO } from "./dates";
 import { t } from "./i18n";
+import { linkTargets } from "./links";
+import { OPEN_TASK_STATUSES, RelationField, SaintType } from "./model";
+import { isContentNote, isInboxNote } from "./scope";
+import { frontMatterOf, isArchived, resolveLink } from "./vault-io";
 
-const LINK_FIELDS: RelationField[] = ["project", "area", "sources", "uses"];
+const LINK_FIELDS: RelationField[] = ["project", "area", "parent", "source", "uses"];
 
 interface Entry {
 	file: TFile;
@@ -27,7 +27,7 @@ interface Entry {
 	archived: boolean;
 	/** 필드별로 해석된 부모 경로입니다. */
 	parents: Map<RelationField, string[]>;
-	/** 연결 섹션의 Zettel 링크 대상 경로입니다. */
+	/** 본문 링크 대상 경로입니다. */
 	connections: string[];
 }
 
@@ -62,6 +62,7 @@ export class SaintFlowIndex {
 		const files = this.app.vault.getMarkdownFiles();
 		for (const file of files) {
 			const fm = frontMatterOf(this.app, file);
+			if (!isContentNote(this.settings(), file.path, fm)) continue;
 			const type = typeof fm.type === "string" ? fm.type : null;
 			const parents = new Map<RelationField, string[]>();
 			for (const field of LINK_FIELDS) {
@@ -74,12 +75,12 @@ export class SaintFlowIndex {
 				}
 				if (paths.length > 0) parents.set(field, paths);
 			}
-			const connections = type === "zettel" ? this.readConnections(file) : [];
+			const connections = this.readConnections(file);
 			this.entries.set(file.path, {
 				file,
 				type,
 				fm,
-				archived: isArchived(file.path, archiveRoot),
+				archived: isArchived(file.path, archiveRoot, fm),
 				parents,
 				connections,
 			});
@@ -98,7 +99,7 @@ export class SaintFlowIndex {
 					byField.set(field, list);
 				}
 			}
-			for (const target of entry.connections) {
+			for (const target of new Set([...entry.connections, ...[...entry.parents.values()].flat()])) {
 				let set = this.connectionsIn.get(target);
 				if (!set) {
 					set = new Set();
@@ -111,34 +112,17 @@ export class SaintFlowIndex {
 		this.dirty = false;
 	}
 
-	/**
-	 * 연결 섹션 안의 Zettel 링크만 셉니다(설계안 2.3 orphan_zettel 정밀 판정).
-	 * 헤딩과 링크의 줄 위치로 판정하므로 본문을 다시 읽지 않습니다.
-	 */
+	/** Knowledge.base counts outgoing links and backlinks, including Maps and Resources. */
 	private readConnections(file: TFile): string[] {
 		const cache = this.app.metadataCache.getFileCache(file);
-		if (!cache) return [];
-		const headings = cache.headings ?? [];
-		const idx = headings.findIndex((h) => h.heading.trim() === SECTION.links);
-		if (idx < 0) return [];
-		const startLine = headings[idx].position.start.line;
-		let endLine = Number.POSITIVE_INFINITY;
-		for (let i = idx + 1; i < headings.length; i++) {
-			if (headings[i].level <= headings[idx].level) {
-				endLine = headings[i].position.start.line;
-				break;
-			}
-		}
-		const out: string[] = [];
-		for (const link of cache.links ?? []) {
-			const line = link.position.start.line;
-			if (line <= startLine || line >= endLine) continue;
-			const target = link.link.split("|")[0].split("#")[0].trim();
-			if (!target) continue;
-			const dest = resolveLink(this.app, target, file.path);
-			if (dest && dest.path !== file.path) out.push(dest.path);
-		}
-		return out;
+		return [...new Set((cache?.links ?? []).map(link => resolveLink(this.app, link.link, file.path)?.path).filter((path): path is string => !!path))];
+	}
+
+	activeChildCount(project: TFile): number {
+		return this.children(project, "parent").filter(file => {
+			const entry = this.entryOf(file);
+			return entry?.type === "project" && entry.fm.status === "active" && !entry.archived;
+		}).length;
 	}
 
 	entryOf(file: TFile): Entry | null {
@@ -170,23 +154,25 @@ export class SaintFlowIndex {
 		return this.entries.get(file.path)?.archived ?? false;
 	}
 
-	/** stalled 판정을 위한 개수: 이 프로젝트를 가리키는 status = next인 미보관 Task. */
+	/** stalled 판정을 위한 개수: 이 프로젝트를 가리키는 next · in progress · waiting 상태의 미보관 Task. */
 	nextTaskCount(project: TFile): number {
 		this.ensure();
 		return this.children(project, "project").filter((f) => {
 			const entry = this.entries.get(f.path);
 			if (!entry || entry.archived) return false;
-			return entry.type === "task" && entry.fm.status === "next";
+			return entry.type === "task" && OPEN_TASK_STATUSES.includes(entry.fm.status as typeof OPEN_TASK_STATUSES[number]);
 		}).length;
 	}
 
 	connectionCount(zettel: TFile): { outgoing: number; incoming: number } {
 		this.ensure();
+		const cache = this.app.metadataCache.getFileCache(zettel);
+		const targets = new Set((cache?.links ?? []).map(link => link.link));
 		const entry = this.entries.get(zettel.path);
-		const outgoing = entry ? new Set(entry.connections).size : 0;
-		const incoming = this.connectionsIn.get(zettel.path)?.size ?? 0;
-		return { outgoing, incoming };
+		for (const field of LINK_FIELDS) for (const target of linkTargets(entry?.fm[field])) targets.add(target);
+		return { outgoing: targets.size, incoming: this.connectionsIn.get(zettel.path)?.size ?? 0 };
 	}
+
 }
 
 export interface SnapshotItem {
@@ -210,7 +196,6 @@ export function computeSnapshot(
 	index.rebuild();
 	const intervals = settings.recallIntervals;
 	const archiveRoot = settings.folders.archive;
-	const sweepRoot = settings.folders.sweep;
 
 	const inbox: SnapshotItem[] = [];
 	const waiting: SnapshotItem[] = [];
@@ -221,13 +206,14 @@ export function computeSnapshot(
 	const due: SnapshotItem[] = [];
 
 	for (const file of app.vault.getMarkdownFiles()) {
-		if (file.path === sweepRoot || file.path.startsWith(sweepRoot + "/")) {
+		const fm = frontMatterOf(app, file);
+		if (!isContentNote(settings, file.path, fm)) continue;
+		if (isInboxNote(settings, file.path, fm)) {
 			inbox.push({ file });
 			continue;
 		}
-		const archived = isArchived(file.path, archiveRoot);
+		const archived = isArchived(file.path, archiveRoot, fm);
 		if (archived) continue;
-		const fm = frontMatterOf(app, file);
 		const type = fm.type;
 
 		if (type === "task" && fm.status === "waiting") {
@@ -235,15 +221,15 @@ export function computeSnapshot(
 			waiting.push({ file, note: on });
 		}
 
-		if (type === "project" && isStalled({ status: fm.status, archived }, index.nextTaskCount(file))) {
+		if (type === "project" && isStalled({ status: fm.status, archived }, index.nextTaskCount(file), index.activeChildCount(file))) {
 			stalled.push({ file });
 		}
 
 		if (type === "zettel") {
 			const counts = index.connectionCount(file);
 			if (isOrphanZettel(counts.outgoing, counts.incoming)) orphans.push({ file });
-			if (isOldSeed(fm.status, isoFromTimestamp(file.stat.ctime), today, settings.oldSeedDays)) {
-				oldSeeds.push({ file, note: isoFromTimestamp(file.stat.ctime) });
+			if (isOldSeed(fm.maturity, typeof fm.created === "string" ? fm.created : isoFromTimestamp(file.stat.ctime), today, settings.oldSeedDays)) {
+				oldSeeds.push({ file, note: typeof fm.created === "string" ? fm.created : isoFromTimestamp(file.stat.ctime) });
 			}
 			const state = {
 				recall: fm.recall === true,
@@ -256,7 +242,7 @@ export function computeSnapshot(
 			}
 		}
 
-		if (type === "output" && isOutputWithoutUses(fm.uses)) {
+		if ((type === "output" && (fm.status === "done" || fm.status === "shipped")) && isOutputWithoutUses(fm.uses)) {
 			noUses.push({ file, note: typeof fm.status === "string" ? fm.status : "" });
 		}
 	}

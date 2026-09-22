@@ -3,14 +3,16 @@
 
 import { App, Notice, TFile, TFolder } from "obsidian";
 import type { SaintFlowCore } from "./core";
+import { todayISO } from "./dates";
+import { t } from "./i18n";
 import { addLinkToList, linkTargets, toLink } from "./links";
 import { CreatableType, RelationField, TYPE_DEFAULTS, fieldIsMulti } from "./model";
 import { ZETTEL_TITLE_HINT } from "./naming";
 import { closeReviewName, fileNameFor, homeFolderFor, prefixFor } from "./placement";
+import { emptyValueFor, schemaFor } from "./schema";
 import { SECTION, appendToSection } from "./sections";
 import { TemplateVars, templateContent } from "./templates";
 import { containerFolderOf, createNote, setFrontMatter, uniqueBaseName, updateBody } from "./vault-io";
-import { t } from "./i18n";
 
 export { closeReviewName, fileNameFor, homeFolderFor, prefixFor };
 
@@ -54,6 +56,10 @@ export async function createTypedNote(
 	const file = await createNote(core.app, folder, name, content);
 
 	await setFrontMatter(core.app, file, (fm) => {
+		for (const field of schemaFor(type)?.fields ?? []) {
+			if (!(field.key in fm)) fm[field.key] = emptyValueFor(field);
+		}
+		if ("created" in fm && !fm.created) fm.created = opts.templateVars?.date ?? todayISO();
 		const defaults = TYPE_DEFAULTS[type] ?? {};
 		for (const [key, value] of Object.entries(defaults)) {
 			if (fm[key] === undefined || fm[key] === null || fm[key] === "") fm[key] = value;

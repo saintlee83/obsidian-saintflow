@@ -9,10 +9,10 @@
 import { MarkdownPostProcessorContext, Notice, TFile } from "obsidian";
 import { createInContextCommand } from "../commands/c3-create-in-context";
 import type { SaintFlowCore } from "../core";
+import { t } from "../i18n";
 import { CreatableType, typeLabel } from "../model";
 import { typeOf } from "../vault-io";
 import { parseBlock, validateTypes } from "./block-syntax";
-import { t } from "../i18n";
 
 /** 버튼에 쓰는 짧은 이름. 없으면 유형 라벨을 씁니다. */
 function shortLabel(type: CreatableType): string {
@@ -27,13 +27,13 @@ function shortLabel(type: CreatableType): string {
 			return "Working";
 		case "output":
 			return "Output";
-		case "source":
-			return "Source";
+		case "resource":
+			return "Resource";
 		case "zettel":
 			return "Zettel";
 		case "map":
 			return "Map";
-		case "review-close":
+		case "closing":
 			return t("종료 검토");
 		default:
 			return typeLabel(type);

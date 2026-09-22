@@ -1,11 +1,11 @@
 // C15 규칙 검사. 판정은 vault를 모르는 순수 함수로 두고, 사실 수집과 수정 적용은 lint-vault.ts가 합니다.
 
 import type { SaintFlowSettings } from "./config";
-import { SaintType } from "./model";
-import { baseNameOf, folderOf, joinPath } from "./naming";
-import { containerRootFor, fileNameFor, fixedHomeFor, placementKind } from "./placement";
-import { missingRequired, schemaFor, valueProblems } from "./schema";
 import { t } from "./i18n";
+import { SaintType } from "./model";
+import { baseNameOf } from "./naming";
+import { fileNameFor, fixedHomeFor, placementKind } from "./placement";
+import { missingRequired, schemaFor, valueProblems } from "./schema";
 
 export type RuleId =
 	| "home"
@@ -91,16 +91,6 @@ export interface FolderFacts {
 	subfolders: string[];
 }
 
-const CONTAINER_FORBIDDEN: SaintType[] = ["task", "zettel", "source"];
-
-function parentOf(path: string): string {
-	return folderOf(path);
-}
-
-function lastSegment(path: string): string {
-	return path.slice(path.lastIndexOf("/") + 1);
-}
-
 /** 노트 하나를 검사합니다. 보관된 노트는 거처와 파일명 규칙에서 빼고 봅니다. */
 export function checkNote(facts: NoteFacts, settings: SaintFlowSettings): Violation[] {
 	const out: Violation[] = [];
@@ -111,44 +101,7 @@ export function checkNote(facts: NoteFacts, settings: SaintFlowSettings): Violat
 	if (!type || !schema) return out;
 	const saintType = type as SaintType;
 
-	// 컨테이너 내용: Task, Zettel, Source는 컨테이너에 넣지 않습니다(설계안 3.3).
-	const inForbiddenContainer = facts.container !== null && CONTAINER_FORBIDDEN.includes(saintType);
-	if (inForbiddenContainer && !facts.archived) {
-		const home = fixedHomeFor(settings, saintType);
-		out.push({
-			...base,
-			rule: "container-contents",
-			message: t(
-				"{0}이(가) 컨테이너 {1} 안에 있습니다. 관계는 속성으로만 표현합니다.",
-				schema.label,
-				lastSegment(facts.container!)
-			),
-			fix: home
-				? { kind: "move", label: t("{0}(으)로 이동", home), folder: home }
-				: { kind: "open", label: t("파일 열기") },
-		});
-	}
-
-	// 유형과 거처
-	if (!facts.archived && !inForbiddenContainer) {
-		out.push(...checkHome(facts, settings, saintType, schema.label));
-	}
-
-	// 허브 이름
-	if (!facts.archived && (saintType === "project" || saintType === "area")) {
-		const root = containerRootFor(settings, saintType);
-		if (root && parentOf(facts.folder) === root) {
-			const folderName = lastSegment(facts.folder);
-			if (folderName !== facts.basename) {
-				out.push({
-					...base,
-					rule: "hub-name",
-					message: t("허브 이름이 컨테이너 폴더 이름({0})과 다릅니다.", folderName),
-					fix: { kind: "rename", label: t("{0}(으)로 이름 변경", folderName), name: folderName },
-				});
-			}
-		}
-	}
+	if (!facts.archived) out.push(...checkHome(facts, settings, saintType, schema.label));
 
 	// 파일명
 	if (!facts.archived) {
@@ -201,7 +154,7 @@ export function checkNote(facts: NoteFacts, settings: SaintFlowSettings): Violat
 			link.targetArchived &&
 			!facts.archived &&
 			saintType === "task" &&
-			facts.fm.status !== "done" &&
+			facts.fm.status !== "done" && facts.fm.status !== "dropped" &&
 			(link.field === "project" || link.field === "area")
 		) {
 			out.push({
@@ -240,77 +193,12 @@ function checkHome(
 		return [];
 	}
 
-	if (type === "project" || type === "area") {
-		const root = containerRootFor(settings, type);
-		if (!root) return [];
-		if (facts.folder === root) {
-			const expected = joinPath(root, facts.basename);
-			return [
-				{
-					...base,
-					rule: "home",
-					message: t("{0} 허브는 같은 이름의 컨테이너 폴더 안에 있어야 합니다.", label),
-					fix: { kind: "move", label: t("{0}(으)로 이동", expected), folder: expected },
-				},
-			];
-		}
-		if (parentOf(facts.folder) !== root) {
-			const expected = joinPath(root, facts.basename);
-			return [
-				{
-					...base,
-					rule: "home",
-					message: t("{0} 컨테이너는 {1} 바로 아래에 있어야 합니다. 지금은 {2}입니다.", label, root, facts.folder),
-					fix: { kind: "move", label: t("{0}(으)로 이동", expected), folder: expected },
-				},
-			];
-		}
-		return [];
-	}
-
-	// working, output
-	if (!facts.container) {
-		return [
-			{
-				...base,
-				rule: "home",
-				message: t(
-					"{0}은(는) 프로젝트나 영역 컨테이너 안에 있어야 합니다. 지금은 {1}에 있습니다.",
-					label,
-					facts.folder || t("vault 루트")
-				),
-				fix: { kind: "open", label: t("파일 열기") },
-			},
-		];
-	}
 	return [];
 }
 
-/** 컨테이너 폴더를 검사합니다. 허브 누락과 하위 폴더가 대상입니다(설계안 3.3). */
-export function checkFolder(facts: FolderFacts, _settings: SaintFlowSettings): Violation[] {
-	const out: Violation[] = [];
-	if (!facts.isContainer || facts.archived) return out;
-	const base = { path: facts.path, name: facts.name };
-
-	if (!facts.hasHub) {
-		out.push({
-			...base,
-			rule: "hub-name",
-			message: t("컨테이너에 같은 이름의 허브 노트({0}.md)가 없습니다.", facts.name),
-			fix: { kind: "none", label: t("허브를 만들어야 합니다") },
-		});
-	}
-
-	if (facts.subfolders.length > 0) {
-		out.push({
-			...base,
-			rule: "folder-depth",
-			message: t("컨테이너 안의 하위 폴더는 _files만 허용합니다: {0}", facts.subfolders.join(", ")),
-			fix: { kind: "none", label: t("보고만 합니다") },
-		});
-	}
-
-	return out;
+/** Manual 폴더 구조에는 컨테이너나 허브 이름 제한이 없습니다. */
+export function checkFolder(_facts: FolderFacts, _settings: SaintFlowSettings): Violation[] {
+	return [];
 }
 
 /** 규칙별로 묶습니다. 결과 화면과 리포트가 같은 순서를 씁니다. */
