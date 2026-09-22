@@ -7,11 +7,10 @@ const LINK_FORBIDDEN = /[#^[\]]/g;
 
 /**
  * 규칙 6: 금지 문자를 제거하거나 치환합니다.
- * C# 처럼 식별자 뒤에 붙은 샾은 뜻을 잃지 않도록 " Sharp" 로 바꿉니다.
+ * 링크를 깨뜨리는 문자는 공백으로 바꿉니다.
  */
 export function sanitizeFileName(raw: string): string {
 	let name = (raw ?? "").split(/\r?\n/)[0] ?? "";
-	name = name.replace(/([A-Za-z0-9])#/g, "$1 Sharp");
 	name = name.replace(OS_FORBIDDEN, " ").replace(LINK_FORBIDDEN, " ");
 	name = name.replace(/\s+/g, " ").trim();
 	// Windows는 이름 끝에 점과 공백을 둘 수 없습니다.
@@ -42,7 +41,7 @@ export function stripPrefix(prefix: string, name: string): string {
 /** 규칙 4: 파일명은 vault 전체에서 유일해야 합니다. 겹치면 뒤에 번호를 붙입니다. */
 export function uniqueName(base: string, taken: (candidate: string) => boolean): string {
 	if (!taken(base)) return base;
-	for (let i = 2; i < 1000; i++) {
+	for (let i = 2;i < 1000;i++) {
 		const candidate = `${base} ${i}`;
 		if (!taken(candidate)) return candidate;
 	}

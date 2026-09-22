@@ -2,19 +2,20 @@
 // 조건을 못 채우면 상태를 바꾸지 않습니다.
 
 import { Notice, TFile } from "obsidian";
-import type { SaintFlowCore } from "../core";
 import { evergreenBlockers, isOutputWithoutUses } from "../checks";
-import { todayISO } from "../dates";
+import type { SaintFlowCore } from "../core";
+import { t } from "../i18n";
 import {
+	areaStatusOptions,
 	outputStatusOptions,
 	projectStatusOptions,
+	resourceStatusOptions,
 	taskStatusOptions,
 	zettelStatusOptions,
 } from "../model";
 import { SECTION, parseConnections, sectionText } from "../sections";
 import { confirm, pickOne, promptText } from "../ui/modals";
 import { frontMatterOf, readBody, setFrontMatter, typeOf } from "../vault-io";
-import { t } from "../i18n";
 
 export async function statusCommand(core: SaintFlowCore, target?: TFile): Promise<void> {
 	const file = target ?? core.app.workspace.getActiveFile();
@@ -24,11 +25,11 @@ export async function statusCommand(core: SaintFlowCore, target?: TFile): Promis
 	}
 	const type = typeOf(core.app, file);
 	const fm = frontMatterOf(core.app, file);
-	const current = typeof fm.status === "string" ? fm.status : "";
+	const current = String((type === "zettel" ? fm.maturity : fm.status) ?? "");
 
 	const options = optionsFor(type);
 	if (!options) {
-		new Notice(t("Task, Project, Zettel, Output에서만 쓸 수 있습니다."));
+		new Notice(t("Task, Project, Area, Resource, Zettel, Output에서 쓸 수 있습니다."));
 		return;
 	}
 
@@ -44,6 +45,10 @@ export async function statusCommand(core: SaintFlowCore, target?: TFile): Promis
 	if (!next || next === current) return;
 
 	switch (type) {
+		case "area":
+		case "resource":
+			await setFrontMatter(core.app, file, (fm) => { fm.status = next; });
+			break;
 		case "task":
 			await applyTask(core, file, next);
 			break;
@@ -62,6 +67,8 @@ export async function statusCommand(core: SaintFlowCore, target?: TFile): Promis
 
 function optionsFor(type: string | null): Record<string, string> | null {
 	switch (type) {
+		case "area": return areaStatusOptions();
+		case "resource": return resourceStatusOptions();
 		case "task":
 			return taskStatusOptions();
 		case "project":
@@ -89,7 +96,6 @@ async function applyTask(core: SaintFlowCore, file: TFile, next: string): Promis
 	}
 	await setFrontMatter(core.app, file, (fm) => {
 		fm.status = next;
-		if (next === "done") fm.completed = todayISO();
 		if (next === "waiting" && waitingOn) fm.waiting_on = waitingOn;
 	});
 	new Notice(`status: ${next}`);
@@ -117,7 +123,7 @@ async function applyZettel(core: SaintFlowCore, file: TFile, next: string): Prom
 	if (next === "evergreen") {
 		const body = await readBody(core.app, file);
 		const blockers = evergreenBlockers({
-			thought: sectionText(body, SECTION.thought).replace(/^원문을 닫고 자기 말로 씁니다\.?$/m, "").trim(),
+			thought: sectionText(body, SECTION.thought).replace(/%%[\s\S]*?%%/g, "").replace(/^원문을 닫고 자기 말로 씁니다\.?$/m, "").trim(),
 			links: parseConnections(body).map((c) => ({ target: c.target, reason: c.reason })),
 		});
 		if (blockers.length > 0) {
@@ -126,9 +132,9 @@ async function applyZettel(core: SaintFlowCore, file: TFile, next: string): Prom
 		}
 	}
 	await setFrontMatter(core.app, file, (fm) => {
-		fm.status = next;
+		fm.maturity = next;
 	});
-	new Notice(`status: ${next}`);
+	new Notice(`maturity: ${next}`);
 }
 
 async function applyOutput(core: SaintFlowCore, file: TFile, next: string): Promise<void> {
@@ -144,7 +150,6 @@ async function applyOutput(core: SaintFlowCore, file: TFile, next: string): Prom
 	}
 	await setFrontMatter(core.app, file, (fm) => {
 		fm.status = next;
-		if (next === "shipped") fm.shipped = todayISO();
 	});
 	new Notice(`status: ${next}`);
 }

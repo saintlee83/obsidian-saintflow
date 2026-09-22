@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { baseNameOf, folderOf, joinPath, sanitizeFileName, stripPrefix, uniqueName, withPrefix } from "../src/naming";
 import { addLinkToList, extractLinks, linkTargets, parseLinkTarget, toLink } from "../src/links";
+import { baseNameOf, folderOf, joinPath, sanitizeFileName, stripPrefix, uniqueName, withPrefix } from "../src/naming";
 
 describe("sanitizeFileName (설계안 3.5 규칙 6)", () => {
 	it("운영체제 금지 문자를 지웁니다", () => {
@@ -12,9 +12,9 @@ describe("sanitizeFileName (설계안 3.5 규칙 6)", () => {
 		assert.equal(sanitizeFileName("[[링크]] ^블록 #태그x"), "링크 블록 태그x");
 	});
 
-	it("C#은 C Sharp로 바꿉니다", () => {
-		assert.equal(sanitizeFileName("C# 비동기 정리"), "C Sharp 비동기 정리");
-		assert.equal(sanitizeFileName("F#"), "F Sharp");
+	it("샾을 공백으로 바꿉니다", () => {
+		assert.equal(sanitizeFileName("C# 비동기 정리"), "C 비동기 정리");
+		assert.equal(sanitizeFileName("F#"), "F");
 	});
 
 	it("첫 줄만 씁니다", () => {

@@ -12,9 +12,9 @@ export const SECTION = {
 	log: "인출 기록",
 	structure: "구조",
 	snapshot: "점검 스냅샷",
-	/** Source 템플릿의 섹션. C13과 C14가 씁니다. */
-	extract: "추출할 생각",
-	summary: "핵심 내용",
+	/** Resource 템플릿의 섹션. C13과 C14가 씁니다. */
+	extract: "여기서 나온 생각",
+	summary: "요약",
 } as const;
 
 export interface FrontMatterSplit {
@@ -49,7 +49,7 @@ export function findSection(body: string, name: string): SectionRange | null {
 	const lines = (body ?? "").split("\n");
 	let found = -1;
 	let level = 0;
-	for (let i = 0; i < lines.length; i++) {
+	for (let i = 0;i < lines.length;i++) {
 		const h = headingText(lines[i]);
 		if (h && h.text === name) {
 			found = i;
@@ -59,7 +59,7 @@ export function findSection(body: string, name: string): SectionRange | null {
 	}
 	if (found < 0) return null;
 	let end = lines.length;
-	for (let i = found + 1; i < lines.length; i++) {
+	for (let i = found + 1;i < lines.length;i++) {
 		const h = headingText(lines[i]);
 		if (h && h.level <= level) {
 			end = i;
@@ -104,7 +104,7 @@ export function parseConnections(body: string): ConnectionLine[] {
 	if (!range) return [];
 	const lines = (body ?? "").split("\n");
 	const out: ConnectionLine[] = [];
-	for (let i = range.start; i < range.end; i++) {
+	for (let i = range.start;i < range.end;i++) {
 		const raw = lines[i];
 		const m = /^\s*[-*]\s+(.*)$/.exec(raw);
 		if (!m) continue;
@@ -127,7 +127,7 @@ export function parseSectionLinks(body: string, name: string): string[] {
 	if (!range) return [];
 	const lines = (body ?? "").split("\n");
 	const out: string[] = [];
-	for (let i = range.start; i < range.end; i++) {
+	for (let i = range.start;i < range.end;i++) {
 		if (isPlaceholderLine(lines[i])) continue;
 		const m = /^\s*[-*]\s+(\[\[[^\]]+\]\])/.exec(lines[i]);
 		if (!m) continue;
@@ -152,7 +152,7 @@ export function appendToSection(body: string, name: string, line: string, headin
 	}
 	const lines = source.split("\n");
 	const kept: string[] = [];
-	for (let i = range.start; i < range.end; i++) {
+	for (let i = range.start;i < range.end;i++) {
 		if (isPlaceholderLine(lines[i])) continue;
 		kept.push(lines[i]);
 	}
@@ -182,7 +182,7 @@ export function firstRecallQuestion(body: string): string {
 	const range = findSection(body, SECTION.questions);
 	if (!range) return "";
 	const lines = (body ?? "").split("\n");
-	for (let i = range.start; i < range.end; i++) {
+	for (let i = range.start;i < range.end;i++) {
 		const t = lines[i].trim();
 		if (t === "") continue;
 		if (t.startsWith(">")) continue;

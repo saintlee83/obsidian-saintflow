@@ -1,0 +1,141 @@
+filters:
+  and:
+    - 'file.inFolder("2_Internalize")'
+    - 'type != "room"'
+formulas:
+  interval: 'if(box >= 5, "30d", if(box == 4, "14d", if(box == 3, "7d", if(box == 2, "3d", "1d"))))'
+  next_review: 'if(last_reviewed, date(last_reviewed) + formula.interval, today())'
+  due_today: 'recall == true && archived != true && formula.next_review <= today()'
+  recall_when: 'if(recall == true && archived != true, formula.next_review.relative(), "")'
+  link_count: 'file.links.length + file.backlinks.length'
+  orphan: 'type == "zettel" && archived != true && file.links.length == 0 && file.backlinks.length == 0'
+  old_seed: 'type == "zettel" && maturity == "seed" && archived != true && (if(created, date(created), file.ctime) + "14d") <= today()'
+properties:
+  file.name:
+    displayName: 이름
+  type:
+    displayName: 유형
+  maturity:
+    displayName: 성숙도
+  source:
+    displayName: 출처
+  recall:
+    displayName: 복습 대상
+  question:
+    displayName: 회상 질문
+  box:
+    displayName: Box
+  last_result:
+    displayName: 최근 판정
+  created:
+    displayName: 생성일
+  formula.link_count:
+    displayName: 연결 수
+  formula.orphan:
+    displayName: 연결 없음
+  formula.old_seed:
+    displayName: 오래된 seed
+  formula.recall_when:
+    displayName: 회상
+views:
+  - type: table
+    name: Zettel
+    filters:
+      and:
+        - 'file.inFolder("2_Internalize/Zettels")'
+        - 'archived != true'
+    order:
+      - file.name
+      - maturity
+      - formula.link_count
+      - source
+      - recall
+      - box
+    sort:
+      - property: created
+        direction: DESC
+  - type: table
+    name: Map
+    filters:
+      and:
+        - 'file.inFolder("2_Internalize/Maps")'
+        - 'archived != true'
+    order:
+      - file.name
+      - formula.link_count
+      - created
+    sort:
+      - property: file.name
+        direction: ASC
+  - type: table
+    name: seed 점검
+    filters:
+      and:
+        - 'file.inFolder("2_Internalize/Zettels")'
+        - 'maturity == "seed"'
+        - 'archived != true'
+    order:
+      - file.name
+      - formula.link_count
+      - formula.orphan
+      - formula.old_seed
+      - created
+    sort:
+      - property: created
+        direction: ASC
+  - type: table
+    name: 연결 없음
+    filters:
+      and:
+        - 'formula.orphan == true'
+    order:
+      - file.name
+      - maturity
+      - created
+  - type: table
+    name: 회상 순서
+    filters:
+      and:
+        - 'recall == true'
+        - 'archived != true'
+    order:
+      - file.name
+      - question
+      - box
+      - formula.recall_when
+      - last_result
+    sort:
+      - property: formula.next_review
+        direction: ASC
+  - type: table
+    name: 오늘 회상
+    filters:
+      and:
+        - 'formula.due_today == true'
+    order:
+      - file.name
+      - question
+      - box
+      - formula.recall_when
+      - last_result
+    sort:
+      - property: formula.next_review
+        direction: ASC
+  - type: table
+    name: 연결됨
+    filters:
+      and:
+        - 'file.hasLink(this.file)'
+        - 'archived != true'
+    order:
+      - file.name
+      - type
+      - maturity
+  - type: table
+    name: 보관
+    filters:
+      and:
+        - 'archived == true'
+    order:
+      - file.name
+      - type

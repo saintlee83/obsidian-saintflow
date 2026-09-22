@@ -3,7 +3,7 @@
 
 import type { SaintFlowSettings } from "./config";
 import { CreatableType, SaintType } from "./model";
-import { joinPath, sanitizeFileName, stripPrefix, withPrefix } from "./naming";
+import { sanitizeFileName, stripPrefix, withPrefix } from "./naming";
 
 /** 유형별 접두사. Task와 Zettel에는 접두사가 없습니다. */
 export function prefixFor(settings: SaintFlowSettings, type: CreatableType): string {
@@ -16,14 +16,14 @@ export function prefixFor(settings: SaintFlowSettings, type: CreatableType): str
 			return settings.prefixes.working;
 		case "output":
 			return settings.prefixes.output;
-		case "source":
+		case "resource":
 			return settings.prefixes.source;
 		case "map":
 			return settings.prefixes.map;
-		case "session":
+		case "recall":
 			return settings.prefixes.session;
-		case "review":
-		case "review-close":
+		case "weekly":
+		case "closing":
 			return settings.prefixes.review;
 		default:
 			return "";
@@ -50,21 +50,22 @@ export function homeFolderFor(
 			return f.zettels;
 		case "map":
 			return f.maps;
-		case "source":
+		case "resource":
 			return f.resources;
-		case "session":
+		case "recall":
 			return f.narrate;
 		case "daily":
 			return f.daily;
-		case "review":
-		case "review-close":
+		case "weekly":
+		case "closing":
 			return f.reviews;
 		case "project":
-			return joinPath(f.projects, ctx.containerName ?? "");
+			return f.projects;
 		case "area":
-			return joinPath(f.areas, ctx.containerName ?? "");
-		case "working":
+			return f.areas;
 		case "output":
+			return f.outputs;
+		case "working":
 			// 컨테이너와 함께 끝나는 파일입니다(설계안 3.3).
 			return ctx.parentContainer ?? f.transform;
 	}
@@ -72,21 +73,7 @@ export function homeFolderFor(
 
 /** 거처를 고정 폴더로 판정할 수 있는 유형인지. 컨테이너에 사는 유형은 폴더로 못 정합니다. */
 export function placementKind(type: SaintType): "folder" | "container" | "any" {
-	switch (type) {
-		case "task":
-		case "zettel":
-		case "map":
-		case "source":
-		case "session":
-		case "daily":
-		case "review":
-			return "folder";
-		case "project":
-		case "area":
-		case "working":
-		case "output":
-			return "container";
-	}
+	return type === "working" ? "any" : "folder";
 }
 
 /** 고정 거처가 있는 유형의 폴더 경로. 없으면 null입니다. */

@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { parseBlock, validateTypes } from "../src/blocks/block-syntax";
+import { setLocale } from "../src/i18n";
 import {
 	SECTION,
 	appendToSection,
@@ -11,8 +13,6 @@ import {
 	sectionText,
 	splitFrontMatter,
 } from "../src/sections";
-import { parseBlock, validateTypes } from "../src/blocks/block-syntax";
-import { setLocale } from "../src/i18n";
 
 // 이 테스트는 원문(한국어) 문구를 그대로 검사합니다.
 setLocale("ko");
@@ -141,12 +141,12 @@ describe("firstRecallQuestion", () => {
 
 describe("C11 블록 문법 (설계안 5.3)", () => {
 	it("types 한 줄을 읽습니다", () => {
-		assert.deepEqual(parseBlock("types: task, working, output, zettel, source").types, [
+		assert.deepEqual(parseBlock("types: task, working, output, zettel, resource").types, [
 			"task",
 			"working",
 			"output",
 			"zettel",
-			"source",
+			"resource",
 		]);
 	});
 
@@ -156,14 +156,14 @@ describe("C11 블록 문법 (설계안 5.3)", () => {
 	});
 
 	it("부모 유형에 허용된 자식만 남깁니다", () => {
-		const { allowed, errors } = validateTypes("source", ["zettel", "task"]);
+		const { allowed, errors } = validateTypes("resource", ["zettel", "task"]);
 		assert.deepEqual(allowed, ["zettel"]);
 		assert.equal(errors.length, 1);
-		assert.match(errors[0], /task은\(는\) source 맥락에서 만들 수 없습니다/);
+		assert.match(errors[0], /task은\(는\) resource 맥락에서 만들 수 없습니다/);
 	});
 
 	it("부모가 될 수 없는 유형이면 모두 거부", () => {
-		const { allowed, errors } = validateTypes("task", ["zettel"]);
+		const { allowed, errors } = validateTypes("output", ["zettel"]);
 		assert.deepEqual(allowed, []);
 		assert.match(errors[0], /부모가 아닙니다/);
 	});
@@ -172,12 +172,11 @@ describe("C11 블록 문법 (설계안 5.3)", () => {
 		const { allowed, errors } = validateTypes("project", [
 			"task",
 			"zettel",
-			"source",
-			"working",
+			"resource",
+			"project",
 			"output",
-			"review-close",
 		]);
-		assert.equal(allowed.length, 6);
+		assert.equal(allowed.length, 5);
 		assert.deepEqual(errors, []);
 	});
 });

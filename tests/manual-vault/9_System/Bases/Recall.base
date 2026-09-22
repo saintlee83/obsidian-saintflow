@@ -1,0 +1,18 @@
+filters:
+  and:
+    - 'file.inFolder("3_Narrate")'
+    - 'type == "recall"'
+properties:
+  file.name:
+    displayName: 회상 노트
+  date:
+    displayName: 날짜
+views:
+  - type: table
+    name: 기록
+    order:
+      - file.name
+      - date
+    sort:
+      - property: date
+        direction: DESC

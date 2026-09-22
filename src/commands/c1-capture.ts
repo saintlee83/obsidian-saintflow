@@ -3,10 +3,11 @@
 
 import { Notice, TFile } from "obsidian";
 import type { SaintFlowCore } from "../core";
+import { todayISO } from "../dates";
+import { t } from "../i18n";
 import { sanitizeFileName } from "../naming";
 import { promptText } from "../ui/modals";
 import { createNote } from "../vault-io";
-import { t } from "../i18n";
 
 export async function captureCommand(core: SaintFlowCore, open = false): Promise<TFile | null> {
 	const raw = await promptText(core.app, {
@@ -31,7 +32,7 @@ export async function captureCommand(core: SaintFlowCore, open = false): Promise
 
 	// 금지 문자를 지우면서 뜻이 바뀐 경우에만 원문을 본문에 남깁니다.
 	const body = name === text ? "" : text + "\n";
-	const file = await createNote(core.app, core.settings.folders.sweep, name, body);
+	const file = await createNote(core.app, core.settings.folders.sweep, name, `---\ndispatch:\nlink:\ncreated: ${todayISO()}\n---\n${body}`);
 	core.index.invalidate();
 
 	if (open) await core.app.workspace.getLeaf(false).openFile(file);

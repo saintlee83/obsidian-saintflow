@@ -1,0 +1,35 @@
+filters:
+  and:
+    - 'file.inFolder("0_Sweep")'
+    - 'type != "room"'
+properties:
+  file.name:
+    displayName: 이름
+  dispatch:
+    displayName: 보낼 곳
+  link:
+    displayName: 링크
+  file.ctime:
+    displayName: 수집일
+views:
+  - type: table
+    name: 수집함
+    order:
+      - file.name
+      - link
+      - file.ctime
+    sort:
+      - property: file.ctime
+        direction: DESC
+  - type: table
+    name: 분류
+    order:
+      - file.name
+      - dispatch
+      - link
+      - file.ctime
+    sort:
+      - property: dispatch
+        direction: ASC
+      - property: file.ctime
+        direction: ASC

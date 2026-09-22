@@ -1,175 +1,76 @@
-// 설계안 2.2 엔터티 스키마와 2.4 맥락 생성 매트릭스.
-
+// SaintFlow Manual: 유형, 상태, 부모별 생성 규칙.
 import { t } from "./i18n";
 
-export type SaintType =
-	| "task"
-	| "project"
-	| "area"
-	| "working"
-	| "output"
-	| "source"
-	| "zettel"
-	| "map"
-	| "session"
-	| "daily"
-	| "review";
-
-/** C2 분류와 C3 맥락 생성에서 고르는 유형. review-close는 종료 검토 노트입니다. */
-export type CreatableType = SaintType | "review-close";
-
-/**
- * 유형 라벨은 화면에만 쓰므로 언어 설정을 따릅니다.
- * 상수가 아니라 함수인 이유: 모듈을 읽는 시점이 아니라 그릴 때 언어를 정해야 합니다.
- */
+export type SaintType = "task" | "project" | "area" | "resource" | "zettel" | "map" | "output" | "recall" | "daily" | "weekly" | "closing" | "working";
+export type CreatableType = SaintType;
 export function typeLabel(type: CreatableType): string {
-	switch (type) {
-		case "task":
-			return t("Task (행동 하나)");
-		case "project":
-			return t("Project (컨테이너와 허브)");
-		case "area":
-			return t("Area (컨테이너와 허브)");
-		case "working":
-			return t("Working (작업 노트 W-)");
-		case "output":
-			return t("Output (결과물 O-)");
-		case "source":
-			return t("Source (참고 자료 S-)");
-		case "zettel":
-			return t("Zettel (자기 말로 쓴 주장)");
-		case "map":
-			return t("Map (지식 지도 M-)");
-		case "session":
-			return t("회상 세션 (N-)");
-		case "daily":
-			return "Daily";
-		case "review":
-			return t("검토");
-		case "review-close":
-			return t("Review (프로젝트 종료)");
-	}
+	const labels: Record<CreatableType, string> = {
+		task: t("Task (행동 하나)"), project: "Project", area: "Area", resource: "Resource",
+		zettel: t("Zettel (자기 말로 쓴 주장)"), map: "Map", output: "Output",
+		recall: t("회상 세션 (N-)"), daily: "Daily", weekly: "Weekly", closing: t("Review (프로젝트 종료)"), working: "Working",
+	};
+	return labels[type];
 }
-
-// 상태 값 자체는 frontmatter에 그대로 들어가므로 번역하지 않습니다.
-// 번역하는 것은 값 옆에 붙는 설명뿐입니다.
-export const TASK_STATUS_VALUES = ["next", "scheduled", "waiting", "someday", "done"] as const;
-export const PROJECT_STATUS_VALUES = ["active", "on-hold", "someday", "done"] as const;
-export const AREA_STATUS_VALUES = ["active", "inactive"] as const;
+export const TASK_STATUS_VALUES = ["next", "in progress", "waiting", "someday", "done", "dropped"] as const;
+export const PROJECT_STATUS_VALUES = ["planned", "active", "paused", "someday", "done", "dropped"] as const;
+export const AREA_STATUS_VALUES = ["active", "paused", "retired"] as const;
+export const RESOURCE_STATUS_VALUES = ["to read", "reading", "processed", "reference"] as const;
 export const ZETTEL_STATUS_VALUES = ["seed", "evergreen"] as const;
-export const OUTPUT_STATUS_VALUES = ["draft", "shipped"] as const;
-
-/** 드롭다운에 쓰는 값 → 라벨 표입니다. */
-export function taskStatusOptions(): Record<string, string> {
-	return {
-		next: t("next (다음 행동)"),
-		scheduled: t("scheduled (예정)"),
-		waiting: t("waiting (대기)"),
-		someday: t("someday (언젠가)"),
-		done: t("done (완료)"),
-	};
-}
-
-export function projectStatusOptions(): Record<string, string> {
-	return {
-		active: t("active (진행 중)"),
-		"on-hold": t("on-hold (보류)"),
-		someday: t("someday (언젠가)"),
-		done: t("done (완료)"),
-	};
-}
-
-export function areaStatusOptions(): Record<string, string> {
-	return { active: "active", inactive: "inactive" };
-}
-
-export function zettelStatusOptions(): Record<string, string> {
-	return { seed: "seed", evergreen: "evergreen" };
-}
-
-export function outputStatusOptions(): Record<string, string> {
-	return { draft: "draft", shipped: "shipped" };
-}
-
-/** 2.4 유형별 기본값. */
-export const TYPE_DEFAULTS: Partial<Record<CreatableType, Record<string, unknown>>> = {
-	task: { type: "task", status: "next" },
-	project: { type: "project", status: "active" },
-	area: { type: "area", status: "active" },
-	working: { type: "working" },
-	output: { type: "output", status: "draft" },
-	source: { type: "source" },
-	zettel: { type: "zettel", status: "seed", recall: false, box: 1 },
-	map: { type: "map" },
-	session: { type: "session" },
-	daily: { type: "daily" },
-	review: { type: "review" },
-	"review-close": { type: "review", cycle: "project-close" },
+export const OUTPUT_STATUS_VALUES = ["draft", "in review", "done", "shipped"] as const;
+export const RESOURCE_KIND_VALUES = ["책", "강의", "문서", "논문", "영상", "웹", "데이터시트", "기타"] as const;
+export const OUTPUT_KIND_VALUES = ["문서", "코드", "발표", "결정", "기타"] as const;
+export const REVIEW_CYCLE_VALUES = ["매주", "격주", "매월", "분기"] as const;
+export const OPEN_TASK_STATUSES = ["next", "in progress", "waiting"] as const;
+const options = (values: readonly string[]): Record<string, string> => Object.fromEntries(values.map(value => [value, value]));
+export const taskStatusOptions = () => options(TASK_STATUS_VALUES);
+export const projectStatusOptions = () => options(PROJECT_STATUS_VALUES);
+export const areaStatusOptions = () => options(AREA_STATUS_VALUES);
+export const resourceStatusOptions = () => options(RESOURCE_STATUS_VALUES);
+export const zettelStatusOptions = () => options(ZETTEL_STATUS_VALUES);
+export const outputStatusOptions = () => options(OUTPUT_STATUS_VALUES);
+export const reviewCycleOptions = () => options(REVIEW_CYCLE_VALUES);
+export const TYPE_DEFAULTS: Record<CreatableType, Record<string, unknown>> = {
+	task: { type: "task", status: "next", archived: false },
+	project: { type: "project", status: "active", archived: false },
+	area: { type: "area", status: "active", review_cycle: "매월", archived: false },
+	resource: { type: "resource", status: "to read", archived: false },
+	zettel: { type: "zettel", maturity: "seed", recall: false, box: 1, archived: false },
+	map: { type: "map", archived: false }, output: { type: "output", status: "draft", archived: false },
+	recall: { type: "recall" }, daily: { type: "daily" }, weekly: { type: "weekly" }, closing: { type: "closing" },
+	working: { type: "working", archived: false },
 };
-
-/** 유형별 템플릿 파일 이름(설계안 3.9). */
 export const TYPE_TEMPLATE: Record<CreatableType, string> = {
-	task: "Task",
-	project: "Project",
-	area: "Area",
-	working: "Working",
-	output: "Output",
-	source: "Source",
-	zettel: "Zettel",
-	map: "Map",
-	session: "Recall Session",
-	daily: "Daily",
-	review: "Weekly Review",
-	"review-close": "Project Close Review",
+	task: "Task", project: "Project", area: "Area", resource: "Resource", zettel: "Zettel", map: "Map",
+	output: "Output", recall: "Recall", daily: "Daily", weekly: "Weekly", closing: "Closing", working: "Working",
 };
-
-/** 2.4 맥락 생성 매트릭스. 부모 유형이 허용하는 자식 유형입니다. */
 export const CONTEXT_MATRIX: Partial<Record<SaintType, CreatableType[]>> = {
-	project: ["task", "zettel", "source", "working", "output", "review-close"],
-	area: ["task", "project", "zettel", "source", "working"],
-	source: ["zettel"],
-	zettel: ["zettel"],
-	map: ["zettel"],
+	project: ["task", "project", "output", "resource", "zettel"], area: ["project", "task", "resource", "zettel"],
+	task: ["task"], resource: ["zettel"], map: ["zettel"], zettel: ["zettel"],
 };
-
 export function allowedChildren(parentType: unknown): CreatableType[] {
-	if (typeof parentType !== "string") return [];
-	return CONTEXT_MATRIX[parentType as SaintType] ?? [];
+	return typeof parentType === "string" ? CONTEXT_MATRIX[parentType as SaintType] ?? [] : [];
 }
-
-export function isContextParent(parentType: unknown): boolean {
-	return allowedChildren(parentType).length > 0;
-}
-
-/** C2 분류에서 고를 수 있는 유형(설계안 5.3 C2 표). */
-export const ARRANGE_TYPES: CreatableType[] = ["task", "project", "area", "source", "zettel", "map"];
-
-/** 링크 속성 필드(C5). */
+export function isContextParent(parentType: unknown): boolean { return allowedChildren(parentType).length > 0; }
+export const ARRANGE_TYPES: CreatableType[] = ["task", "project", "area", "resource", "zettel", "map", "output"];
 export const RELATION_FIELDS = {
-	project: { label: "project", multi: false, types: ["project"] as SaintType[] },
-	area: { label: "area", multi: false, types: ["area"] as SaintType[] },
-	sources: { label: "sources", multi: true, types: ["source"] as SaintType[] },
-	uses: { label: "uses", multi: true, types: ["zettel", "source"] as SaintType[] },
-} as const;
-
-export type RelationField = keyof typeof RELATION_FIELDS;
-
-/** 유형별로 쓸 수 있는 관계 필드입니다. */
-export const FIELDS_BY_TYPE: Partial<Record<SaintType, RelationField[]>> = {
-	task: ["project", "area"],
-	project: ["area"],
-	working: ["project", "area"],
-	output: ["project", "uses"],
-	source: ["project", "area"],
-	zettel: ["sources", "project", "area"],
-	review: ["project"],
+	project: { label: "project", types: ["project"] as SaintType[] }, area: { label: "area", types: ["area"] as SaintType[] },
+	parent: { label: "parent", types: ["task", "project"] as SaintType[] }, source: { label: "source", types: ["resource"] as SaintType[] },
+	uses: { label: "uses", types: ["zettel", "resource"] as SaintType[] },
 };
-
-/** Source와 Zettel의 project/area는 다중(0..n)입니다(설계안 2.1). */
-export function fieldIsMulti(type: unknown, field: RelationField): boolean {
-	if (field === "sources" || field === "uses") return true;
-	if (field === "project" || field === "area") {
-		return type === "source" || type === "zettel";
+export type RelationField = keyof typeof RELATION_FIELDS;
+export const FIELDS_BY_TYPE: Partial<Record<SaintType, RelationField[]>> = {
+	task: ["project", "area", "parent"], project: ["area", "parent"], working: ["project", "area"],
+	output: ["project", "uses"], resource: ["project", "area"], zettel: ["source", "project", "area"], closing: ["project"],
+};
+export function fieldIsMulti(_type: unknown, field: RelationField): boolean { return field !== "parent"; }
+/** 하위 Task는 project를 중복 기록하지 않습니다. 하위 프로젝트만 area를 상속합니다. */
+export function contextRelations(parentType: string | null, childType: CreatableType, parentLink: string, parentFm: Record<string, unknown> = {}): Record<string, unknown> {
+	if (parentType === "project") {
+		if (childType === "project") return { parent: parentLink, ...(parentFm.area ? { area: Array.isArray(parentFm.area) ? [...parentFm.area] : [parentFm.area] } : {}) };
+		return { project: [parentLink] };
 	}
-	return false;
+	if (parentType === "area") return { area: [parentLink] };
+	if (parentType === "task" && childType === "task") return { parent: parentLink };
+	if (parentType === "resource" && childType === "zettel") return { source: [parentLink] };
+	return {};
 }

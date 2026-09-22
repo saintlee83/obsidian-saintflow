@@ -1,0 +1,39 @@
+filters:
+  and:
+    - 'file.inFolder("1_Arrange/Areas")'
+formulas:
+  active_projects: 'file.backlinks.filter(value.asFile().properties.type == "project" && value.asFile().properties.status == "active").length'
+properties:
+  file.name:
+    displayName: 이름
+  status:
+    displayName: 상태
+  standard:
+    displayName: 유지 기준
+  review_cycle:
+    displayName: 점검 주기
+  formula.active_projects:
+    displayName: 진행 프로젝트
+views:
+  - type: table
+    name: 전체
+    filters:
+      and:
+        - 'archived != true'
+    order:
+      - file.name
+      - status
+      - standard
+      - review_cycle
+      - formula.active_projects
+    sort:
+      - property: file.name
+        direction: ASC
+  - type: table
+    name: 보관
+    filters:
+      and:
+        - 'archived == true'
+    order:
+      - file.name
+      - status

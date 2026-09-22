@@ -36,7 +36,9 @@ class ChoiceModal<T> extends FuzzySuggestModal<Choice<T>> {
 
 	onClose(): void {
 		super.onClose();
-		if (!this.settled) this.resolve(null);
+		// Obsidian closes the suggestion modal before calling onChooseItem.
+		// Wait until selection has had a chance to settle the result.
+		queueMicrotask(() => { if (!this.settled) this.resolve(null); });
 	}
 }
 

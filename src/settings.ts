@@ -9,11 +9,11 @@ import {
 	SaintFlowSettings,
 	parseIntervals,
 } from "./config";
-import { SCHEMA_VERSION } from "./schema";
 import { t } from "./i18n";
+import { SCHEMA_VERSION } from "./schema";
 
-export type { FolderSettings, PrefixSettings, SaintFlowSettings };
 export { DEFAULT_SETTINGS, parseIntervals };
+export type { FolderSettings, PrefixSettings, SaintFlowSettings };
 
 const folderLabels = (): [keyof FolderSettings, string][] => [
 	["sweep", t("수집함 (S)")],
@@ -24,7 +24,8 @@ const folderLabels = (): [keyof FolderSettings, string][] => [
 	["zettels", "Zettels"],
 	["maps", "Maps"],
 	["narrate", t("회상 세션 (N)")],
-	["transform", "Task (T)"],
+	["transform", "Tasks (T)"],
+	["outputs", "Outputs (T)"],
 	["daily", "Daily"],
 	["reviews", "Reviews"],
 	["templates", t("템플릿")],
@@ -112,7 +113,7 @@ export class SaintFlowSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName(t("파일 탐색기에서 허브 구분 표시"))
-			.setDesc(t("C18. 컨테이너 폴더와 이름이 같은 허브 노트를 굵게 표시합니다."))
+			.setDesc(t("C18. 방 노트와 Project, Area를 굵게 표시합니다."))
 			.addToggle((tg) =>
 				tg.setValue(this.plugin.settings.markHubsInExplorer).onChange(async (v) => {
 					this.plugin.settings.markHubsInExplorer = v;
@@ -186,7 +187,7 @@ export class SaintFlowSettingTab extends PluginSettingTab {
 					.setPlaceholder(DEFAULT_SETTINGS.prefixes[key])
 					.setValue(this.plugin.settings.prefixes[key])
 					.onChange(async (value) => {
-						this.plugin.settings.prefixes[key] = value.trim() || DEFAULT_SETTINGS.prefixes[key];
+						this.plugin.settings.prefixes[key] = value.trim();
 						await this.plugin.saveSettings();
 					})
 			);
@@ -194,7 +195,7 @@ export class SaintFlowSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName(t("기본값으로 되돌리기"))
-			.setDesc(t("폴더, 접두사, 회상 간격을 설계안 기본값으로 돌립니다."))
+			.setDesc(t("폴더, 접두사, 회상 간격을 SaintFlow Manual 기본값으로 돌립니다."))
 			.addButton((btn) =>
 				btn.setButtonText(t("되돌리기")).onClick(async () => {
 					const schemaVersion = this.plugin.settings.schemaVersion;

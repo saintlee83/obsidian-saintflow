@@ -1,0 +1,47 @@
+filters:
+  and:
+    - 'file.inFolder("5_Flow")'
+    - 'type != "room"'
+properties:
+  file.name:
+    displayName: 이름
+  type:
+    displayName: 유형
+  date:
+    displayName: 날짜
+  project:
+    displayName: Project
+views:
+  - type: table
+    name: 기록
+    order:
+      - file.name
+      - type
+      - date
+      - project
+    sort:
+      - property: date
+        direction: DESC
+  - type: table
+    name: Weekly
+    filters:
+      and:
+        - 'type == "weekly"'
+    order:
+      - file.name
+      - date
+    sort:
+      - property: date
+        direction: DESC
+  - type: table
+    name: 종료
+    filters:
+      and:
+        - 'type == "closing"'
+    order:
+      - file.name
+      - project
+      - date
+    sort:
+      - property: date
+        direction: DESC
